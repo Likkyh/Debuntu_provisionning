@@ -1,0 +1,108 @@
+# ============================================================
+# DEBUNTU NANO CONFIG - ~/.nanorc
+# Enhanced nano configuration for Debian/Ubuntu
+# ============================================================
+
+# ----------------------------------------------------------
+# SYNTAX HIGHLIGHTING
+# ----------------------------------------------------------
+# Include syntax highlighting from nano-syntax-highlighting package
+# On Debian/Ubuntu: sudo apt install nano-syntax-highlighting
+# Fallback to built-in nano syntax files if package not installed
+
+# Try the nano-syntax-highlighting package first (recommended)
+include "/usr/share/nano-syntax-highlighting/*.nanorc"
+
+# Fallback: Include built-in nano syntax highlighting
+include "/usr/share/nano/*.nanorc"
+
+# ----------------------------------------------------------
+# VISUAL SETTINGS
+# ----------------------------------------------------------
+# Display line numbers on the left
+set linenumbers
+
+# Use 4 spaces for tabs (industry standard)
+set tabsize 4
+
+# Convert tabs to spaces
+set tabstospaces
+
+# Automatically indent new lines
+set autoindent
+
+# Show cursor position in the status bar
+set constantshow
+
+# Smooth scrolling (line by line instead of half-screen)
+set smooth
+
+# Enable soft line wrapping (don't break long lines)
+set softwrap
+
+# Show whitespace characters (tabs and trailing spaces)
+# Uncomment if you want to see whitespace
+# set whitespace "»·"
+
+# ----------------------------------------------------------
+# INTERFACE COLORS
+# ----------------------------------------------------------
+# Title bar (top) - Bold white on blue
+set titlecolor bold,white,blue
+
+# Status bar (bottom) - Bold white on blue  
+set statuscolor bold,white,blue
+
+# Key bindings bar - White on black
+set keycolor cyan
+
+# Function descriptions - White
+set functioncolor white
+
+# Selected text - Black on cyan
+set selectedcolor black,cyan
+
+# Line numbers - Cyan
+set numbercolor cyan
+
+# ----------------------------------------------------------
+# EDITING BEHAVIOR
+# ----------------------------------------------------------
+# Make Ctrl+Backspace delete the previous word
+# bind ^H chopwordleft main
+
+# Enable mouse support
+set mouse
+
+# Allow nano to be suspended with Ctrl+Z
+set suspend
+
+# Remember cursor position between sessions
+set positionlog
+
+# Smart Home key (goes to first non-whitespace character)
+set smarthome
+
+# Enable multiple file buffers
+set multibuffer
+
+# Automatically save on exit (no prompt)
+# Uncomment if you want auto-save behavior
+# set saveonexit
+
+# ----------------------------------------------------------
+# SEARCH BEHAVIOR
+# ----------------------------------------------------------
+# Case-insensitive search by default
+set casesensitive
+
+# Enable regular expression searches by default
+# set regexp
+
+# ----------------------------------------------------------
+# BACKUP SETTINGS
+# ----------------------------------------------------------
+# Create backup files with ~ suffix
+# Uncomment to enable backups
+# set backup
+# set backupdir "~/.nano/backups"

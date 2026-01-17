@@ -1,0 +1,178 @@
+# ============================================================
+# DEBUNTU ZSH ALIASES - ~/.zshrc_aliases
+# Loaded by .zshrc - Contains all custom command shortcuts
+# ============================================================
+
+# ----------------------------------------------------------
+# MODERN CLI REPLACEMENTS
+# These aliases replace standard utilities with modern alternatives
+# ----------------------------------------------------------
+
+# bat - A cat clone with syntax highlighting and git integration
+# Falls back to cat if bat is not installed
+if command -v bat &> /dev/null; then
+    alias cat='bat --paging=never'
+    alias catp='bat'  # bat with pager
+elif command -v batcat &> /dev/null; then
+    # Debian/Ubuntu use 'batcat' as the binary name
+    alias cat='batcat --paging=never'
+    alias catp='batcat'
+    alias bat='batcat'
+fi
+
+# lsd - LSDeluxe, a modern ls replacement with icons
+# Falls back to standard ls with colors if lsd is not installed
+if command -v lsd &> /dev/null; then
+    alias ls='lsd --group-directories-first'
+    alias la='lsd -A --group-directories-first'
+    alias ll='lsd -lAh --group-directories-first'
+    alias lt='lsd --tree --depth=2'
+    alias tree='lsd --tree'
+else
+    # Fallback to standard ls with colors
+    alias ls='ls --color=auto --group-directories-first'
+    alias la='ls -A --color=auto --group-directories-first'
+    alias ll='ls -lAh --color=auto --group-directories-first'
+fi
+
+# grep with color
+alias grep='grep --color=auto'
+alias egrep='egrep --color=auto'
+alias fgrep='fgrep --color=auto'
+
+# ----------------------------------------------------------
+# SAFETY ALIASES
+# Prevent accidental file destruction
+# ----------------------------------------------------------
+alias cp='cp -iv'       # Confirm before overwrite, verbose
+alias mv='mv -iv'       # Confirm before overwrite, verbose
+alias rm='rm -Iv'       # Confirm before deleting multiple files
+
+# ----------------------------------------------------------
+# DEBIAN/UBUNTU PACKAGE MANAGEMENT
+# ----------------------------------------------------------
+alias update='sudo apt update && sudo apt upgrade -y'
+alias install='sudo apt install'
+alias remove='sudo apt remove'
+alias purge='sudo apt purge'
+alias search='apt search'
+alias autoremove='sudo apt autoremove -y'
+alias clean='sudo apt clean && sudo apt autoclean'
+
+# ----------------------------------------------------------
+# NAVIGATION SHORTCUTS
+# ----------------------------------------------------------
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
+
+# Quick access to common directories
+alias config='cd ~/.config'
+alias docs='cd ~/Documents'
+alias dl='cd ~/Downloads'
+
+# ----------------------------------------------------------
+# SYSTEM UTILITIES
+# ----------------------------------------------------------
+alias cls='clear'
+alias c='clear'
+alias h='history'
+alias j='jobs -l'
+alias path='echo -e ${PATH//:/\\n}'  # Print PATH entries on separate lines
+alias now='date +"%Y-%m-%d %H:%M:%S"'
+alias week='date +%V'  # Show current week number
+
+# Disk usage
+alias df='df -h'
+alias du='du -h'
+alias duf='du -sh * | sort -hr'  # Sorted folder sizes
+
+# Process management
+alias psg='ps aux | grep -v grep | grep -i'  # Search processes
+
+# ----------------------------------------------------------
+# NETWORK UTILITIES
+# ----------------------------------------------------------
+alias ports='ss -tulanp'  # Show all listening ports
+alias myip='curl -s ifconfig.me && echo'  # Public IP
+alias localip="hostname -I | awk '{print \$1}'"  # Local IP
+alias ping='ping -c 5'  # Ping with count limit
+
+# ----------------------------------------------------------
+# GIT SHORTCUTS
+# ----------------------------------------------------------
+alias g='git'
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit -m'
+alias gp='git push'
+alias gl='git pull'
+alias gd='git diff'
+alias glog='git log --oneline --graph --decorate -10'
+
+# ----------------------------------------------------------
+# SYSTEMCTL SHORTCUTS
+# ----------------------------------------------------------
+alias sc='sudo systemctl'
+alias scstart='sudo systemctl start'
+alias scstop='sudo systemctl stop'
+alias screstart='sudo systemctl restart'
+alias scstatus='sudo systemctl status'
+alias scenable='sudo systemctl enable'
+alias scdisable='sudo systemctl disable'
+
+# ----------------------------------------------------------
+# EDITOR SHORTCUTS
+# ----------------------------------------------------------
+alias v='nvim'
+alias vi='nvim'
+alias vim='nvim'
+alias n='nano'
+
+# ----------------------------------------------------------
+# BTOP ALIAS
+# ----------------------------------------------------------
+alias top='btop'
+alias htop='btop'
+
+# ----------------------------------------------------------
+# MISC UTILITIES
+# ----------------------------------------------------------
+# Create directory and cd into it
+mkcd() {
+    mkdir -p "$1" && cd "$1"
+}
+
+# Extract any archive
+extract() {
+    if [ -f "$1" ]; then
+        case "$1" in
+            *.tar.bz2)   tar xjf "$1"     ;;
+            *.tar.gz)    tar xzf "$1"     ;;
+            *.tar.xz)    tar xJf "$1"     ;;
+            *.bz2)       bunzip2 "$1"     ;;
+            *.rar)       unrar x "$1"     ;;
+            *.gz)        gunzip "$1"      ;;
+            *.tar)       tar xf "$1"      ;;
+            *.tbz2)      tar xjf "$1"     ;;
+            *.tgz)       tar xzf "$1"     ;;
+            *.zip)       unzip "$1"       ;;
+            *.Z)         uncompress "$1"  ;;
+            *.7z)        7z x "$1"        ;;
+            *)           echo "'$1' cannot be extracted via extract()" ;;
+        esac
+    else
+        echo "'$1' is not a valid file"
+    fi
+}
+
+# Quick backup of a file
+backup() {
+    cp "$1" "$1.bak.$(date +%Y%m%d_%H%M%S)"
+}
+
+# Show disk usage of current directory, sorted
+ducks() {
+    du -cks * 2>/dev/null | sort -rn | head -15
+}
