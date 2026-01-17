@@ -24,7 +24,7 @@
 ## 📁 Directory Structure
 
 ```
-linux-config-main/
+Debuntu_provisionning/
 ├── config/
 │   ├── fastfetch/
 │   │   └── config.jsonc       # Fastfetch config (kitty/sixel support)
@@ -34,8 +34,7 @@ linux-config-main/
 ├── fonts/
 │   └── MartianMono_/          # MartianMono Nerd Font files
 ├── scripts/
-│   ├── setup.sh               # 🚀 Main provisioning script
-│   └── debuntu_sshd_config.sh # SSH hardening script
+│   └── setup.sh               # 🚀 Main provisioning script (includes SSH hardening)
 └── README.md                  # This file
 ```
 
@@ -46,8 +45,8 @@ linux-config-main/
 ### One-liner Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/linux-config-main.git
-cd linux-config-main
+git clone https://github.com/Likkyh/Debuntu_provisionning.git
+cd Debuntu_provisionning
 sudo ./scripts/setup.sh
 ```
 
@@ -55,8 +54,8 @@ sudo ./scripts/setup.sh
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/linux-config-main.git
-   cd linux-config-main
+   git clone https://github.com/Likkyh/Debuntu_provisionning.git
+   cd Debuntu_provisionning
    ```
 
 2. **Make the script executable:**
@@ -198,10 +197,7 @@ The SSH daemon is hardened with:
 - Modern cryptographic algorithms (post-quantum ready)
 - Login banner enabled
 
-**Run standalone hardening:**
-```bash
-sudo ./scripts/debuntu_sshd_config.sh
-```
+> SSH hardening is automatically performed by `setup.sh`. The script will guide you through adding your SSH public key before disabling password authentication.
 
 ---
 
