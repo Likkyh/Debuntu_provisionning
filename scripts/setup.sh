@@ -368,39 +368,35 @@ install_essentials() {
 }
 
 # ----------------------------------------------------------
-# MODULE 4: FONT INSTALLATION
+# MODULE 4: FONT INSTALLATION (via Nerd Fonts CLI)
 # ----------------------------------------------------------
 install_fonts() {
     step "INSTALLING MARTIANMONO NERD FONT"
     
-    local font_src="$REPO_ROOT/fonts/MartianMono_"
-    local font_dest="/usr/local/share/fonts/MartianMono"
+    local font_dest="/usr/local/share/fonts/NerdFonts"
     
-    if [[ ! -d "$font_src" ]]; then
-        # Try alternate name
-        font_src="$REPO_ROOT/fonts/MartianMono"
-    fi
+    info "Installing MartianMono Nerd Font via official installer..."
     
-    if [[ ! -d "$font_src" ]]; then
-        warn "Font directory not found at $font_src"
-        info "Attempting to download MartianMono Nerd Font..."
-        
-        mkdir -p "$font_dest"
-        local font_url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/MartianMono.zip"
-        
-        if curl -fsSL "$font_url" -o /tmp/MartianMono.zip; then
-            unzip -o /tmp/MartianMono.zip -d "$font_dest" >> "$LOG_FILE" 2>&1
-            rm -f /tmp/MartianMono.zip
-            success "Downloaded and installed MartianMono Nerd Font"
-        else
-            warn "Failed to download font. Install manually later."
-            return
-        fi
+    # Use the official Nerd Fonts install script
+    # This downloads and installs fonts to ~/.local/share/fonts by default
+    # We'll install system-wide instead
+    
+    mkdir -p "$font_dest"
+    
+    # Download MartianMono directly from Nerd Fonts releases
+    local font_url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/MartianMono.zip"
+    local temp_zip="/tmp/MartianMono.zip"
+    
+    info "Downloading MartianMono Nerd Font..."
+    if curl -fsSL "$font_url" -o "$temp_zip"; then
+        info "Extracting fonts..."
+        unzip -o "$temp_zip" -d "$font_dest" >> "$LOG_FILE" 2>&1
+        rm -f "$temp_zip"
+        success "MartianMono Nerd Font installed to $font_dest"
     else
-        info "Copying fonts from $font_src..."
-        mkdir -p "$font_dest"
-        cp -r "$font_src"/*.ttf "$font_dest/" 2>/dev/null || true
-        success "Fonts copied to $font_dest"
+        error "Failed to download MartianMono Nerd Font"
+        warn "You can install manually later with: curl -fsSL https://raw.githubusercontent.com/ronniedroid/getnf/master/install.sh | bash"
+        return 1
     fi
     
     # Update font cache

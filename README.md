@@ -12,7 +12,7 @@
 
 - 🧹 **System Cleanup** - Removes bloatware and unnecessary packages
 - 👤 **User Management** - Configures sudo and permissions
-- 🔤 **MartianMono Nerd Font** - Installed system-wide as default monospace
+- 🔤 **MartianMono Nerd Font** - Downloaded via Nerd Fonts CLI, set as system-wide default
 - 🐚 **ZSH + Oh-My-Zsh** - With Powerlevel10k theme and useful plugins
 - ⌨️ **LazyVim** - Full Neovim IDE experience for all users
 - 🖥️ **Fastfetch** - Beautiful system info with image protocol support
@@ -31,8 +31,6 @@ Debuntu_provisionning/
 │   ├── .nanorc                # Nano editor config with syntax highlighting
 │   ├── .zshrc                 # ZSH config with Oh-My-Zsh + Powerlevel10k
 │   └── .zshrc_aliases         # Custom command aliases
-├── fonts/
-│   └── MartianMono_/          # MartianMono Nerd Font files
 ├── scripts/
 │   └── setup.sh               # 🚀 Main provisioning script (includes SSH hardening)
 └── README.md                  # This file
