@@ -293,10 +293,12 @@ protect_desktop_packages() {
         apt-mark manual "$pkg" >> "$LOG_FILE" 2>&1 || true
     done
     
-    # Also hold critical packages to prevent any removal
-    apt-mark hold gdm3 gnome-shell mutter xserver-xorg-core >> "$LOG_FILE" 2>&1 || true
+    # NOTE: We intentionally do NOT use 'apt-mark hold' here because it blocks
+    # all package upgrades and can prevent unrelated packages (like curl) from
+    # installing due to dependency chain conflicts. apt-mark manual is sufficient
+    # to prevent packages from being auto-removed.
     
-    success "Desktop packages protected from removal"
+    success "Desktop packages protected from auto-removal"
 }
 
 # ----------------------------------------------------------
