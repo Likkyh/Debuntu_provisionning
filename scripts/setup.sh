@@ -178,7 +178,7 @@ prompt_ssh_key() {
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo "Please paste your SSH public key (starts with 'ssh-rsa' or 'ssh-ed25519'):"
-    echo "(Press Enter twice when done)"
+    echo -e "${YELLOW}To SKIP, just press Enter twice (no SSH key will be added).${NC}"
     echo ""
     
     SSH_KEY=""
@@ -196,6 +196,47 @@ prompt_ssh_key() {
             success "Valid SSH key format detected"
         else
             warn "Key format not recognized. Proceeding anyway..."
+        fi
+    fi
+}
+
+# ----------------------------------------------------------
+# KEYBOARD LOCALE PRESERVATION
+# ----------------------------------------------------------
+backup_keyboard_locale() {
+    step "BACKING UP KEYBOARD LOCALE"
+    
+    if [[ -f /etc/default/keyboard ]]; then
+        cp /etc/default/keyboard /etc/default/keyboard.debuntu.bak
+        success "Keyboard locale backed up to /etc/default/keyboard.debuntu.bak"
+    else
+        info "No keyboard configuration found to backup"
+    fi
+    
+    # Also backup console-setup if present
+    if [[ -f /etc/default/console-setup ]]; then
+        cp /etc/default/console-setup /etc/default/console-setup.debuntu.bak
+    fi
+}
+
+restore_keyboard_locale() {
+    # Check if keyboard config was modified and restore if needed
+    if [[ -f /etc/default/keyboard.debuntu.bak ]]; then
+        if ! diff -q /etc/default/keyboard /etc/default/keyboard.debuntu.bak &>/dev/null 2>&1; then
+            info "Keyboard locale was modified, restoring..."
+            cp /etc/default/keyboard.debuntu.bak /etc/default/keyboard
+            dpkg-reconfigure -f noninteractive keyboard-configuration >> "$LOG_FILE" 2>&1 || true
+            success "Keyboard locale restored"
+        else
+            success "Keyboard locale unchanged"
+        fi
+    fi
+    
+    # Same for console-setup
+    if [[ -f /etc/default/console-setup.debuntu.bak ]]; then
+        if ! diff -q /etc/default/console-setup /etc/default/console-setup.debuntu.bak &>/dev/null 2>&1; then
+            cp /etc/default/console-setup.debuntu.bak /etc/default/console-setup
+            dpkg-reconfigure -f noninteractive console-setup >> "$LOG_FILE" 2>&1 || true
         fi
     fi
 }
@@ -250,6 +291,25 @@ cleanup_system() {
     
     if [[ $removed -gt 0 ]]; then
         success "Removed $removed bloatware packages"
+        
+        # Protect essential desktop packages from autoremove
+        info "Protecting essential desktop packages..."
+        local desktop_packages=(
+            "gnome-shell"
+            "gdm3"
+            "gnome-session"
+            "gnome-terminal"
+            "gnome-control-center"
+            "mutter"
+            "gnome-settings-daemon"
+            "nautilus"
+            "xorg"
+            "xserver-xorg"
+        )
+        for pkg in "${desktop_packages[@]}"; do
+            apt-mark manual "$pkg" >> "$LOG_FILE" 2>&1 || true
+        done
+        
         apt-get autoremove -y >> "$LOG_FILE" 2>&1
         apt-get clean >> "$LOG_FILE" 2>&1
     else
@@ -851,6 +911,9 @@ main() {
     # Interactive SSH key prompt FIRST
     prompt_ssh_key
     
+    # Backup keyboard locale before any package operations
+    backup_keyboard_locale
+    
     # Execute modules
     cleanup_system
     setup_user
@@ -865,6 +928,9 @@ main() {
     setup_ssh_key
     harden_ssh
     cleanup_old_files
+    
+    # Restore keyboard locale if it was modified
+    restore_keyboard_locale
     
     # Done
     echo "" >> "$LOG_FILE"
