@@ -471,6 +471,18 @@ install_essentials() {
     
     info "Installing packages (this may take a while)..."
     
+    # Critical packages that must be installed first without restrictions
+    local critical_packages=("curl" "wget" "git" "unzip")
+    
+    for pkg in "${critical_packages[@]}"; do
+        if ! dpkg -l | grep -q "^ii  $pkg "; then
+            info "Installing critical package: $pkg"
+            apt-get install -y "$pkg" >> "$LOG_FILE" 2>&1 || {
+                warn "Failed to install critical package $pkg - this may cause issues"
+            }
+        fi
+    done
+    
     for pkg in "${packages[@]}"; do
         if dpkg -l | grep -q "^ii  $pkg "; then
             log "INFO" "Package $pkg already installed"
@@ -478,7 +490,7 @@ install_essentials() {
             info "Installing: $pkg"
             # Use --no-remove to prevent APT from removing other packages
             if ! apt-get install -y --no-remove "$pkg" >> "$LOG_FILE" 2>&1; then
-                # Fallback without --no-remove for older apt versions
+                # Fallback without --no-remove for older apt versions or complex deps
                 apt-get install -y "$pkg" >> "$LOG_FILE" 2>&1 || {
                     warn "Failed to install $pkg (may not be available or conflicts)"
                 }
@@ -509,6 +521,13 @@ install_fonts() {
     local font_url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/MartianMono.zip"
     local temp_zip="/tmp/MartianMono.zip"
     
+    # Verify curl is available
+    if ! command -v curl &>/dev/null; then
+        error "curl is not available - cannot download fonts"
+        warn "Install curl manually and re-run this script"
+        return 0  # Continue with other modules
+    fi
+    
     info "Downloading MartianMono Nerd Font..."
     if curl -fsSL "$font_url" -o "$temp_zip"; then
         info "Extracting fonts..."
@@ -518,7 +537,7 @@ install_fonts() {
     else
         error "Failed to download MartianMono Nerd Font"
         warn "You can install manually later with: curl -fsSL https://raw.githubusercontent.com/ronniedroid/getnf/master/install.sh | bash"
-        return 1
+        return 0  # Continue with other modules instead of failing
     fi
     
     # Update font cache
