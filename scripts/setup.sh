@@ -242,6 +242,64 @@ restore_keyboard_locale() {
 }
 
 # ----------------------------------------------------------
+# DESKTOP ENVIRONMENT PROTECTION
+# ----------------------------------------------------------
+protect_desktop_packages() {
+    step "PROTECTING DESKTOP ENVIRONMENT"
+    
+    info "Marking essential desktop packages as manually installed..."
+    
+    # Comprehensive list of GNOME/desktop packages to protect
+    local desktop_packages=(
+        # GNOME core
+        "gnome-shell"
+        "gdm3"
+        "gnome-session"
+        "gnome-session-bin"
+        "gnome-terminal"
+        "gnome-control-center"
+        "mutter"
+        "gnome-settings-daemon"
+        "nautilus"
+        "gnome-desktop3-data"
+        
+        # X.org
+        "xorg"
+        "xserver-xorg"
+        "xserver-xorg-core"
+        "xserver-xorg-input-all"
+        "xserver-xorg-video-all"
+        
+        # Display managers
+        "gdm3"
+        "lightdm"
+        
+        # Desktop meta-packages
+        "ubuntu-desktop"
+        "ubuntu-desktop-minimal"
+        "gnome"
+        "gnome-core"
+        "task-gnome-desktop"
+        "task-desktop"
+        
+        # Keyboard/locale packages
+        "keyboard-configuration"
+        "console-setup"
+        "console-setup-linux"
+        "xkb-data"
+    )
+    
+    for pkg in "${desktop_packages[@]}"; do
+        apt-mark manual "$pkg" >> "$LOG_FILE" 2>&1 || true
+    done
+    
+    # Also hold critical packages to prevent any removal
+    apt-mark hold gdm3 gnome-shell mutter xserver-xorg-core >> "$LOG_FILE" 2>&1 || true
+    
+    success "Desktop packages protected from removal"
+}
+
+# ----------------------------------------------------------
 # MODULE 1: SYSTEM CLEANUP
 # ----------------------------------------------------------
 cleanup_system() {
@@ -418,9 +476,13 @@ install_essentials() {
             log "INFO" "Package $pkg already installed"
         else
             info "Installing: $pkg"
-            apt-get install -y "$pkg" >> "$LOG_FILE" 2>&1 || {
-                warn "Failed to install $pkg (may not be available)"
-            }
+            # Use --no-remove to prevent APT from removing other packages
+            if ! apt-get install -y --no-remove "$pkg" >> "$LOG_FILE" 2>&1; then
+                # Fallback without --no-remove for older apt versions
+                apt-get install -y "$pkg" >> "$LOG_FILE" 2>&1 || {
+                    warn "Failed to install $pkg (may not be available or conflicts)"
+                }
+            fi
         fi
     done
     
@@ -908,11 +970,12 @@ main() {
     detect_os
     get_default_user
     
-    # Interactive SSH key prompt FIRST
-    prompt_ssh_key
-    
-    # Backup keyboard locale before any package operations
+    # PROTECT DESKTOP IMMEDIATELY - before any package operations
+    protect_desktop_packages
     backup_keyboard_locale
+    
+    # Interactive SSH key prompt
+    prompt_ssh_key
     
     # Execute modules
     cleanup_system

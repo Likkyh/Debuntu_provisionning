@@ -45,6 +45,7 @@ Debuntu_provisionning/
 ```bash
 git clone https://github.com/Likkyh/Debuntu_provisionning.git
 cd Debuntu_provisionning
+chmod +x scripts/setup.sh
 sudo ./scripts/setup.sh
 ```
 
