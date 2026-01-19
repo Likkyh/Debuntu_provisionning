@@ -85,6 +85,33 @@ check_root() {
 }
 
 # ----------------------------------------------------------
+# PROTECTED PACKAGES (must never be removed)
+# ----------------------------------------------------------
+PROTECTED_PACKAGES="gnome-shell|gdm3|mutter|xserver-xorg-core|gnome-session|gnome-terminal|nautilus|xorg"
+
+# ----------------------------------------------------------
+# SAFE PACKAGE INSTALLATION
+# ----------------------------------------------------------
+# Simulates installation first to check if critical packages would be removed
+safe_install() {
+    local pkg="$1"
+    local sim_output
+    
+    # Simulate installation
+    sim_output=$(apt-get install -s "$pkg" 2>&1)
+    
+    # Check if any protected package would be REMOVED
+    if echo "$sim_output" | grep -E "^Remv.*(${PROTECTED_PACKAGES})" > /dev/null 2>&1; then
+        warn "SKIPPING $pkg - installation would remove critical desktop packages!"
+        log "WARN" "Skipped $pkg - would remove: $(echo "$sim_output" | grep -E "^Remv" | head -3)"
+        return 1
+    fi
+    
+    # Safe to install
+    apt-get install -y "$pkg" >> "$LOG_FILE" 2>&1
+}
+
+# ----------------------------------------------------------
 # OS DETECTION
 # ----------------------------------------------------------
 detect_os() {
@@ -473,30 +500,14 @@ install_essentials() {
     
     info "Installing packages (this may take a while)..."
     
-    # Critical packages that must be installed first without restrictions
-    local critical_packages=("curl" "wget" "git" "unzip")
-    
-    for pkg in "${critical_packages[@]}"; do
-        if ! dpkg -l | grep -q "^ii  $pkg "; then
-            info "Installing critical package: $pkg"
-            apt-get install -y "$pkg" >> "$LOG_FILE" 2>&1 || {
-                warn "Failed to install critical package $pkg - this may cause issues"
-            }
-        fi
-    done
-    
     for pkg in "${packages[@]}"; do
-        if dpkg -l | grep -q "^ii  $pkg "; then
+        if dpkg -l 2>/dev/null | grep -q "^ii  $pkg "; then
             log "INFO" "Package $pkg already installed"
         else
             info "Installing: $pkg"
-            # Use --no-remove to prevent APT from removing other packages
-            if ! apt-get install -y --no-remove "$pkg" >> "$LOG_FILE" 2>&1; then
-                # Fallback without --no-remove for older apt versions or complex deps
-                apt-get install -y "$pkg" >> "$LOG_FILE" 2>&1 || {
-                    warn "Failed to install $pkg (may not be available or conflicts)"
-                }
-            fi
+            safe_install "$pkg" || {
+                warn "Could not install $pkg safely"
+            }
         fi
     done
     
