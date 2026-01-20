@@ -837,6 +837,72 @@ setup_console() {
 }
 
 # ----------------------------------------------------------
+# ----------------------------------------------------------
+# MODULE 4.7: SYSTEM APPEARANCE PERSISTENCE (Autostart)
+# ----------------------------------------------------------
+setup_autostart_fix() {
+    step "CONFIGURING APPEARANCE PERSISTENCE"
+    
+    get_all_users
+    for user_info in "${ALL_USERS[@]}"; do
+        local username="${user_info%%:*}"
+        local home="${user_info##*:}"
+        
+        # Only for non-root users with a home
+        if [[ "$username" == "root" ]]; then continue; fi
+        
+        info "Creating autostart fix for $username..."
+        
+        local autostart_dir="$home/.config/autostart"
+        local bin_dir="$home/.local/bin"
+        local script_path="$bin_dir/debuntu-fix-appearance.sh"
+        
+        mkdir -p "$autostart_dir" "$bin_dir"
+        
+        # Create the fix script
+        cat << 'EOF' > "$script_path"
+#!/bin/bash
+# DEBUNTU APPEARANCE FIXER
+# Runs on login to enforce font and colors
+sleep 2
+
+# 1. Enforce Interface Font
+gsettings set org.gnome.desktop.interface monospace-font-name 'MartianMono Nerd Font 11'
+
+# 2. Enforce Terminal Profile
+get_uuid() {
+    gsettings get org.gnome.Terminal.ProfilesList default | tr -d "'"
+}
+
+UUID=$(get_uuid)
+if [ -n "$UUID" ]; then
+    BASE="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$UUID/"
+    
+    # Force settings
+    gsettings set "$BASE" font 'MartianMono Nerd Font 11'
+    gsettings set "$BASE" use-system-font false
+    gsettings set "$BASE" use-theme-colors true
+fi
+EOF
+        chmod +x "$script_path"
+        chown -R "$username:$username" "$bin_dir"
+        
+        # Create Desktop Entry
+        cat << EOF > "$autostart_dir/debuntu-fix.desktop"
+[Desktop Entry]
+Type=Application
+Exec=$script_path
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=Debuntu Appearance Fix
+Comment=Enforces fonts and colors on login
+EOF
+        chown -R "$username:$username" "$autostart_dir"
+    done
+    success "Autostart fix configured"
+}
+
 # MODULE 5: ZSH CONFIGURATION
 # ----------------------------------------------------------
 setup_zsh() {
