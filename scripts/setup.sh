@@ -684,7 +684,7 @@ install_essentials() {
     safe_install ufw
     safe_install fail2ban 
     safe_install openssh-server
-    safe_install net-tools dnsutils
+    safe_install net-tools dnsutils dbus-x11
     
     # 4. Monitoring & Build
     safe_install btop
