@@ -590,6 +590,10 @@ install_essentials() {
         warn "apt-get update returned error, trying standard update..."
         apt-get update >> "$LOG_FILE" 2>&1 || warn "apt-get update failed"
     }
+
+    info "Performing safe system upgrade to consistency..."
+    # CRITICAL for Debian Testing: align all libraries before installing new ones
+    apt-get upgrade -y >> "$LOG_FILE" 2>&1 || warn "System upgrade had issues"
     
     info "Installing packages one-by-one for safety..." 
     
