@@ -409,50 +409,41 @@ protect_desktop_packages() {
 # ----------------------------------------------------------
 # BOOTLOADER VERIFICATION
 # ----------------------------------------------------------
-verify_bootloader() {
-    step "VERIFYING BOOTLOADER INTEGRITY"
+ensure_bootloader() {
+    step "ENSURING BOOTLOADER MBR/EFI"
     
-    local grub_cfg_found=false
-    
-    if [[ -f /boot/grub/grub.cfg ]]; then
-        info "Found /boot/grub/grub.cfg"
-        grub_cfg_found=true
-    elif [[ -f /boot/grub2/grub.cfg ]]; then
-        info "Found /boot/grub2/grub.cfg"
-        grub_cfg_found=true
-    fi
-    
-    if [[ "$grub_cfg_found" == "false" ]]; then
-        error "CRITICAL: GRUB configuration missing!"
-        warn "Attempting to reinstall GRUB..."
-        
-        # Detect if EFI or Legacy
-        if [[ -d /sys/firmware/efi ]]; then
-            info "EFI system detected. Reinstalling grub-efi..."
-            apt-get install --reinstall -y --no-remove grub-efi-amd64 grub-efi-amd64-signed || true
-            grub-install >> "$LOG_FILE" 2>&1 || true
-            update-grub >> "$LOG_FILE" 2>&1 || true
-        else
-            info "Legacy BIOS system detected. Reinstalling grub-pc..."
-            # Try to detect boot drive (risky, but better than dead system)
-            local boot_dev=$(findmnt / -n -o SOURCE | sed 's/[0-9]*$//')
-            if [[ -b "$boot_dev" ]]; then
-                apt-get install --reinstall -y --no-remove grub-pc || true
-                grub-install "$boot_dev" >> "$LOG_FILE" 2>&1 || true
-                update-grub >> "$LOG_FILE" 2>&1 || true
-            else
-                warn "Could not detect boot device for grub-install"
-            fi
-        fi
-        
-        if [[ -f /boot/grub/grub.cfg ]]; then
-            success "GRUB restored successfully"
-        else
-            error "Failed to restore GRUB. System may not boot."
-        fi
+    # 1. Detect Boot Mechanism
+    if [[ -d /sys/firmware/efi ]]; then
+        info "EFI System Detected."
+        # Ensure packages
+        apt-get install -y --no-remove grub-efi-amd64 grub-efi-amd64-signed shim-signed || true
+        # Install to EFI vars
+        info "Running grub-install..."
+        grub-install >> "$LOG_FILE" 2>&1 || warn "grub-install failed"
     else
-        success "Bootloader configuration looks valid"
+        info "Legacy BIOS Detected."
+        apt-get install -y --no-remove grub-pc || true
+        
+        # Detect Disk
+        local boot_part=$(findmnt / -n -o SOURCE)
+        local boot_disk=$(echo "$boot_part" | sed 's/[0-9]*$//')
+        
+        # Handle NVMe (/dev/nvme0n1p1 -> /dev/nvme0n1)
+        if [[ "$boot_disk" == *"nvme"* ]] && [[ "$boot_disk" == *"p" ]]; then
+             boot_disk=${boot_disk%p}
+        fi
+        
+        if [[ -b "$boot_disk" ]]; then
+            info "Installing GRUB to $boot_disk..."
+            grub-install "$boot_disk" >> "$LOG_FILE" 2>&1 || warn "grub-install to $boot_disk failed"
+        else
+            warn "Could not verify boot disk (detected: $boot_disk). Skipping grub-install."
+        fi
     fi
+    
+    # Update Config
+    update-grub >> "$LOG_FILE" 2>&1 || warn "update-grub failed"
+    success "Bootloader refreshed."
 }
 
 # ----------------------------------------------------------
@@ -1209,7 +1200,7 @@ main() {
     cleanup_system
     setup_user
     install_essentials
-    verify_bootloader # Verify bootloader wasn't nuked by apt
+    ensure_bootloader # Enforce bootloader installation directly
     install_fonts
     setup_zsh
     setup_nano
