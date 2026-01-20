@@ -17,7 +17,8 @@
 # USAGE: sudo ./setup.sh
 # ============================================================
 
-set -euo pipefail
+# Only use -u to catch unset variables. -e causes issues with apt commands.
+set -u
 
 # ----------------------------------------------------------
 # SCRIPT METADATA
