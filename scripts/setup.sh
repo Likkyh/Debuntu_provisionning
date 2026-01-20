@@ -592,6 +592,9 @@ EOF
 setup_zsh() {
     step "CONFIGURING ZSH SHELL"
     
+    # Note: The .zshrc file includes auto-installation of Oh-My-Zsh,
+    # Powerlevel10k, and plugins on first shell startup
+    
     get_all_users
     
     for user_info in "${ALL_USERS[@]}"; do
@@ -600,7 +603,7 @@ setup_zsh() {
         
         info "Setting up ZSH for: $username"
         
-        # Copy .zshrc
+        # Copy .zshrc (handles Oh-My-Zsh auto-install on first login)
         if [[ -f "$REPO_ROOT/config/.zshrc" ]]; then
             cp "$REPO_ROOT/config/.zshrc" "$home/.zshrc"
             chown "$username:$username" "$home/.zshrc" 2>/dev/null || true
@@ -626,7 +629,7 @@ setup_zsh() {
         cp "$REPO_ROOT/config/.zshrc_aliases" /root/.zshrc_aliases 2>/dev/null || true
     fi
     
-    success "ZSH configured for all users"
+    success "ZSH configured (Oh-My-Zsh + Powerlevel10k will install on first login)"
 }
 
 # ----------------------------------------------------------
