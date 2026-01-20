@@ -21,6 +21,12 @@
 set -u
 
 # ----------------------------------------------------------
+# CRITICAL: Prevent apt from asking questions
+# ----------------------------------------------------------
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+
+# ----------------------------------------------------------
 # SCRIPT METADATA
 # ----------------------------------------------------------
 SCRIPT_VERSION="1.0.0"
@@ -203,44 +209,64 @@ prompt_ssh_key() {
 
 # ----------------------------------------------------------
 # KEYBOARD LOCALE PRESERVATION
+# This is CRITICAL - apt can silently reconfigure keyboard
 # ----------------------------------------------------------
+KEYBOARD_BACKED_UP=false
+
 backup_keyboard_locale() {
     step "BACKING UP KEYBOARD LOCALE"
     
     if [[ -f /etc/default/keyboard ]]; then
-        cp /etc/default/keyboard /etc/default/keyboard.debuntu.bak
-        success "Keyboard locale backed up to /etc/default/keyboard.debuntu.bak"
+        cp -f /etc/default/keyboard /etc/default/keyboard.debuntu.bak
+        # Also save the actual content so we can verify
+        cat /etc/default/keyboard > /tmp/keyboard_original.txt
+        KEYBOARD_BACKED_UP=true
+        success "Keyboard locale backed up"
+        info "Current keyboard config:"
+        grep -E "^XKBLAYOUT|^XKBVARIANT" /etc/default/keyboard || true
     else
         info "No keyboard configuration found to backup"
     fi
     
     # Also backup console-setup if present
     if [[ -f /etc/default/console-setup ]]; then
-        cp /etc/default/console-setup /etc/default/console-setup.debuntu.bak
+        cp -f /etc/default/console-setup /etc/default/console-setup.debuntu.bak
+    fi
+    
+    # Mark keyboard-configuration package to not be auto-configured
+    if command -v debconf-set-selections &>/dev/null; then
+        echo "keyboard-configuration keyboard-configuration/layoutcode string $(grep XKBLAYOUT /etc/default/keyboard 2>/dev/null | cut -d'"' -f2 || echo 'us')" | debconf-set-selections 2>/dev/null || true
     fi
 }
 
 restore_keyboard_locale() {
-    # Check if keyboard config was modified and restore if needed
+    # ALWAYS restore keyboard config - don't check if it changed
     if [[ -f /etc/default/keyboard.debuntu.bak ]]; then
-        if ! diff -q /etc/default/keyboard /etc/default/keyboard.debuntu.bak &>/dev/null 2>&1; then
-            info "Keyboard locale was modified, restoring..."
-            cp /etc/default/keyboard.debuntu.bak /etc/default/keyboard
-            dpkg-reconfigure -f noninteractive keyboard-configuration >> "$LOG_FILE" 2>&1 || true
-            success "Keyboard locale restored"
-        else
-            success "Keyboard locale unchanged"
-        fi
+        info "Restoring keyboard locale..."
+        cp -f /etc/default/keyboard.debuntu.bak /etc/default/keyboard
+        # Apply the keyboard configuration
+        setupcon --force 2>/dev/null || true
+        udevadm trigger --subsystem-match=input --action=change 2>/dev/null || true
+        success "Keyboard locale restored"
     fi
     
     # Same for console-setup
     if [[ -f /etc/default/console-setup.debuntu.bak ]]; then
-        if ! diff -q /etc/default/console-setup /etc/default/console-setup.debuntu.bak &>/dev/null 2>&1; then
-            cp /etc/default/console-setup.debuntu.bak /etc/default/console-setup
-            dpkg-reconfigure -f noninteractive console-setup >> "$LOG_FILE" 2>&1 || true
-        fi
+        cp -f /etc/default/console-setup.debuntu.bak /etc/default/console-setup
     fi
 }
+
+# CRITICAL: Set up trap to ALWAYS restore keyboard on exit
+cleanup_on_exit() {
+    local exit_code=$?
+    if [[ "$KEYBOARD_BACKED_UP" == "true" ]]; then
+        echo "" >> "$LOG_FILE" 2>/dev/null || true
+        echo "Restoring keyboard locale on exit..." >> "$LOG_FILE" 2>/dev/null || true
+        restore_keyboard_locale
+    fi
+    exit $exit_code
+}
+trap cleanup_on_exit EXIT
 
 # ----------------------------------------------------------
 # DESKTOP ENVIRONMENT PROTECTION
@@ -472,30 +498,40 @@ setup_user() {
 install_essentials() {
     step "INSTALLING ESSENTIAL PACKAGES"
     
+    info "Fixing any broken packages first..."
+    apt-get --fix-broken install -y >> "$LOG_FILE" 2>&1 || true
+    dpkg --configure -a >> "$LOG_FILE" 2>&1 || true
+    
     info "Updating package lists..."
     apt-get update >> "$LOG_FILE" 2>&1
     
-    info "Installing all packages in a single command..."
+    info "Installing essential packages..." 
     
-    # Install everything in ONE apt install command
-    # This is safer and faster than installing one-by-one
-    apt install -y \
-        curl wget git unzip zip tar gzip \
+    # Use apt-get (more reliable than apt for scripts) with explicit options
+    apt-get install -y --no-install-recommends \
+        curl wget git unzip zip \
         nano vim \
         btop \
         net-tools dnsutils \
         ufw fail2ban openssh-server \
         zsh \
         build-essential \
-        bat lsd fd-find ripgrep fzf jq \
+        fzf jq \
         neovim nodejs npm \
         python3 python3-pip python3-venv \
-        fastfetch \
         fontconfig \
-        nano-syntax-highlighting \
         >> "$LOG_FILE" 2>&1 || {
-            warn "Some packages may have failed to install - check $LOG_FILE"
+            warn "Some packages failed - check $LOG_FILE"
         }
+    
+    # These packages may not exist on all systems, install separately
+    info "Installing optional modern CLI tools..."
+    apt-get install -y bat 2>> "$LOG_FILE" || true
+    apt-get install -y lsd 2>> "$LOG_FILE" || true
+    apt-get install -y fd-find 2>> "$LOG_FILE" || true
+    apt-get install -y ripgrep 2>> "$LOG_FILE" || true
+    apt-get install -y fastfetch 2>> "$LOG_FILE" || true
+    apt-get install -y nano-syntax-highlighting 2>> "$LOG_FILE" || true
     
     success "Essential packages installed"
 }
