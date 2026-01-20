@@ -146,6 +146,29 @@ get_all_users() {
 }
 
 # ----------------------------------------------------------
+# CRITICAL DEPENDENCY CHECK
+# ----------------------------------------------------------
+check_dependencies() {
+    local missing_deps=()
+    
+    if ! command -v curl &>/dev/null; then
+        missing_deps+=("curl")
+    fi
+    
+    if ! command -v git &>/dev/null; then
+        missing_deps+=("git")
+    fi
+    
+    if [[ ${#missing_deps[@]} -gt 0 ]]; then
+        error "Critical dependencies missing: ${missing_deps[*]}"
+        echo -e "${YELLOW}Please install them manually before running this script:${NC}"
+        echo -e "${BOLD}sudo apt update && sudo apt install -y ${missing_deps[*]}${NC}"
+        exit 1
+    fi
+    success "Critical dependencies found (curl, git)"
+}
+
+# ----------------------------------------------------------
 # SSH KEY PROMPT (Interactive)
 # ----------------------------------------------------------
 prompt_ssh_key() {
@@ -575,27 +598,6 @@ safe_install() {
     fi
 }
 
-install_static_curl() {
-    warn "Attempting to install static curl binary as fallback..."
-    # Check for wget to download
-    if ! command -v wget &>/dev/null; then
-        apt-get install -y wget >> "$LOG_FILE" 2>&1 || true
-    fi
-    
-    if command -v wget &>/dev/null; then
-        # Download verified static binary
-        wget -O /usr/local/bin/curl "https://github.com/stunnel/static-curl/releases/latest/download/curl-linux-x86_64" >> "$LOG_FILE" 2>&1
-        chmod +x /usr/local/bin/curl
-        if /usr/local/bin/curl --version &>/dev/null; then
-            success "Static curl installed to /usr/local/bin/curl"
-            hash -r # Refresh shell hash
-            return 0
-        fi
-    fi
-    error "Failed to install static curl"
-    return 1
-}
-
 # ----------------------------------------------------------
 # MODULE 3: ESSENTIAL PACKAGES
 # ----------------------------------------------------------
@@ -619,13 +621,8 @@ install_essentials() {
     info "Installing packages one-by-one for safety..." 
     
     # 1. Critical Tools
-    # Try apt -> try t64 apt -> fallback to static binary
-    if ! safe_install curl; then
-        if ! safe_install libcurl4t64 curl; then
-             install_static_curl
-        fi
-    fi
-    
+    # Note: curl is checked at start, but we update it here if possible
+    safe_install curl || warn "Curl update failed (using existing version)"
     safe_install wget
     safe_install git
     safe_install unzip zip
@@ -684,32 +681,13 @@ install_fonts() {
     local font_url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/MartianMono.zip"
     local temp_zip="/tmp/MartianMono.zip"
     
-    # Verify curl or wget is available
-    if ! command -v curl &>/dev/null && ! command -v wget &>/dev/null; then
-        error "Neither curl nor wget is available - cannot download fonts"
-        warn "Install curl or wget manually and re-run this script"
-        return 0  # Continue with other modules
-    fi
-    
     info "Downloading MartianMono Nerd Font..."
     
-    if command -v curl &>/dev/null; then
-        if curl -fsSL "$font_url" -o "$temp_zip"; then
-            info "Download successful (curl)"
-        else
-            warn "curl download failed, trying wget..."
-            wget -O "$temp_zip" "$font_url" || {
-                error "Failed to download fonts"
-                return 0
-            }
-        fi
-    elif command -v wget &>/dev/null; then
-        if wget -O "$temp_zip" "$font_url"; then
-            info "Download successful (wget)"
-        else
-            error "Failed to download fonts"
-            return 0
-        fi
+    if curl -fsSL "$font_url" -o "$temp_zip"; then
+        info "Download successful"
+    else
+        error "Failed to download fonts"
+        return 0
     fi
     
     info "Extracting fonts..."
@@ -1200,6 +1178,7 @@ main() {
     show_banner
     check_root
     detect_os
+    check_dependencies # Verify curl/git are present
     get_default_user
     
     # PROTECT DESKTOP IMMEDIATELY - before any package operations

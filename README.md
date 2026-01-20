@@ -38,6 +38,13 @@ Debuntu_provisionning/
 
 ---
 
+## ⚠️ Prerequisites
+Before running this script, you must have `curl` and `git` installed.
+On a fresh system:
+```bash
+sudo apt update && sudo apt install -y curl git
+```
+
 ## 🚀 Quick Start
 
 ### One-liner Installation
@@ -51,18 +58,23 @@ sudo ./scripts/setup.sh
 
 ### Step-by-Step
 
-1. **Clone the repository:**
+1. **Install Prerequisites:**
+   ```bash
+   sudo apt update && sudo apt install -y curl git
+   ```
+
+2. **Clone the repository:**
    ```bash
    git clone https://github.com/Likkyh/Debuntu_provisionning.git
    cd Debuntu_provisionning
    ```
 
-2. **Make the script executable:**
+3. **Make the script executable:**
    ```bash
    chmod +x scripts/setup.sh
    ```
 
-3. **Run with sudo:**
+4. **Run with sudo:**
    ```bash
    sudo ./scripts/setup.sh
    ```
