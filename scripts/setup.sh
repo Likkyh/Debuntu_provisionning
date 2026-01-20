@@ -594,7 +594,13 @@ install_essentials() {
     info "Installing packages one-by-one for safety..." 
     
     # 1. Critical Tools
-    safe_install curl || safe_install libcurl4 curl || warn "Curl install failed"
+    # Determine correct libcurl package (Debian Trixie/Sid uses t64 suffix)
+    local libcurl_pkg="libcurl4"
+    if grep -q "trixie" /etc/os-release || grep -q "sid" /etc/os-release; then
+        libcurl_pkg="libcurl4t64"
+    fi
+    
+    safe_install curl || safe_install "$libcurl_pkg" curl || warn "Curl install failed"
     safe_install wget
     safe_install git
     safe_install unzip zip
