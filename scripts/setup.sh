@@ -1430,6 +1430,7 @@ main() {
     install_fonts
     setup_terminal
     setup_console
+    setup_autostart_fix
     setup_zsh
     setup_nano
     setup_fastfetch

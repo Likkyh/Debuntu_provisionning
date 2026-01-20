@@ -25,51 +25,42 @@
         "separator",
         {
             "type": "host",
-            "key": "Virtual Machine",
-            "keyColor": "green"
+            "key": "Virtual Machine"
         },
         {
             "type": "os",
-            "key": "OS Distro",
-            "keyColor": "yellow"
+            "key": "OS Distro"
         },
         {
             "type": "kernel",
-            "key": "Kernel Ver",
-            "keyColor": "yellow"
+            "key": "Kernel Ver"
         },
         {
             "type": "uptime",
-            "key": "System Uptime",
-            "keyColor": "yellow"
+            "key": "System Uptime"
         },
         "break",
         {
             "type": "cpu",
-            "key": "vCPU Core",
-            "keyColor": "blue"
+            "key": "vCPU Core"
         },
         {
             "type": "memory",
-            "key": "Memory RAM",
-            "keyColor": "blue"
+            "key": "Memory RAM"
         },
         {
             "type": "disk",
-            "key": "Disk Space",
-            "keyColor": "blue"
+            "key": "Disk Space"
         },
         "break",
         {
             "type": "localip",
             "key": "LAN IP Addr",
-            "keyColor": "magenta",
             "format": "{1}"
         },
         {
             "type": "publicip",
             "key": "WAN IP Addr",
-            "keyColor": "red",
             "timeout": 1000
         },
         "break",
