@@ -85,52 +85,6 @@ check_root() {
 }
 
 # ----------------------------------------------------------
-# PROTECTED PACKAGES (must never be removed)
-# ----------------------------------------------------------
-# These exact package names will be checked on "Remv" lines
-PROTECTED_PACKAGES=(
-    "gnome-shell"
-    "gdm3"
-    "mutter"
-    "xserver-xorg-core"
-    "gnome-session"
-    "gnome-terminal"
-    "nautilus"
-)
-
-# ----------------------------------------------------------
-# SAFE PACKAGE INSTALLATION
-# ----------------------------------------------------------
-# Simulates installation first to check if critical packages would be removed
-safe_install() {
-    local pkg="$1"
-    local sim_output
-    local dominated=false
-    
-    # Simulate installation
-    sim_output=$(apt-get install -s "$pkg" 2>&1)
-    
-    # Extract only the "Remv" lines (packages that would be removed)
-    local remv_lines
-    remv_lines=$(echo "$sim_output" | grep "^Remv " || true)
-    
-    # Check each protected package
-    if [[ -n "$remv_lines" ]]; then
-        for protected in "${PROTECTED_PACKAGES[@]}"; do
-            # Match exact package name (Remv package-name [version])
-            if echo "$remv_lines" | grep -q "^Remv ${protected} "; then
-                warn "SKIPPING $pkg - would remove protected package: $protected"
-                log "WARN" "Skipped $pkg - would remove $protected"
-                return 1
-            fi
-        done
-    fi
-    
-    # Safe to install
-    apt-get install -y "$pkg" >> "$LOG_FILE" 2>&1
-}
-
-# ----------------------------------------------------------
 # OS DETECTION
 # ----------------------------------------------------------
 detect_os() {
@@ -524,8 +478,8 @@ install_essentials() {
             log "INFO" "Package $pkg already installed"
         else
             info "Installing: $pkg"
-            safe_install "$pkg" || {
-                warn "Could not install $pkg safely"
+            apt-get install -y "$pkg" >> "$LOG_FILE" 2>&1 || {
+                warn "Failed to install $pkg"
             }
         fi
     done
