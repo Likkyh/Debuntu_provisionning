@@ -47,16 +47,13 @@ sudo apt update && sudo apt install -y curl git
 
 ## 🚀 Quick Start
 
-### One-liner Installation
+### Installation (Recommended)
 
 ```bash
-git clone https://github.com/Likkyh/Debuntu_provisionning.git
-cd Debuntu_provisionning
-chmod +x scripts/setup.sh
-sudo ./scripts/setup.sh
+curl -fsSL https://raw.githubusercontent.com/Likkyh/Debuntu_provisionning/main/scripts/setup.sh | sudo bash
 ```
 
-### Step-by-Step
+### Manual Installation (Git)
 
 1. **Install Prerequisites:**
    ```bash

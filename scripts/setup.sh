@@ -169,6 +169,22 @@ check_dependencies() {
 }
 
 # ----------------------------------------------------------
+# ENSURE REPO (Self-Bootstrapping for Curl Pipe)
+# ----------------------------------------------------------
+ensure_repo() {
+    if [[ ! -d "$REPO_ROOT/config" ]]; then
+        info "Running in standalone mode. Cloning repository for configuration..."
+        local temp_dir="/tmp/debuntu_provisionning_$(date +%s)"
+        git clone https://github.com/Likkyh/Debuntu_provisionning.git "$temp_dir" >> "$LOG_FILE" 2>&1 || {
+            error "Failed to clone repository. Cannot continue."
+            exit 1
+        }
+        REPO_ROOT="$temp_dir"
+        success "Repository cloned to $REPO_ROOT"
+    fi
+}
+
+# ----------------------------------------------------------
 # SSH KEY PROMPT (Interactive)
 # ----------------------------------------------------------
 prompt_ssh_key() {
@@ -1179,6 +1195,7 @@ main() {
     check_root
     detect_os
     check_dependencies # Verify curl/git are present
+    ensure_repo        # Auto-clone if running standalone
     get_default_user
     
     # PROTECT DESKTOP IMMEDIATELY - before any package operations
