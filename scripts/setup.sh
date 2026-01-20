@@ -803,10 +803,15 @@ setup_dconf_defaults() {
 [org/gnome/desktop/interface]
 monospace-font-name='MartianMono Nerd Font 11'
 
+# Configure GNOME Terminal to use a specific profile by default
+[org/gnome/terminal/legacy/profiles:]
+default='b1dcc9dd-5262-4d8d-a863-c897e6d979b9'
+list=['b1dcc9dd-5262-4d8d-a863-c897e6d979b9']
+
 [org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9]
+visible-name='Debuntu'
 use-system-font=true
 use-theme-colors=true
-visible-name='Debuntu'
 EOF
 
     # 4. Update Database
