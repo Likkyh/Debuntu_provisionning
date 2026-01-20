@@ -87,7 +87,16 @@ check_root() {
 # ----------------------------------------------------------
 # PROTECTED PACKAGES (must never be removed)
 # ----------------------------------------------------------
-PROTECTED_PACKAGES="gnome-shell|gdm3|mutter|xserver-xorg-core|gnome-session|gnome-terminal|nautilus|xorg"
+# These exact package names will be checked on "Remv" lines
+PROTECTED_PACKAGES=(
+    "gnome-shell"
+    "gdm3"
+    "mutter"
+    "xserver-xorg-core"
+    "gnome-session"
+    "gnome-terminal"
+    "nautilus"
+)
 
 # ----------------------------------------------------------
 # SAFE PACKAGE INSTALLATION
@@ -96,15 +105,25 @@ PROTECTED_PACKAGES="gnome-shell|gdm3|mutter|xserver-xorg-core|gnome-session|gnom
 safe_install() {
     local pkg="$1"
     local sim_output
+    local dominated=false
     
     # Simulate installation
     sim_output=$(apt-get install -s "$pkg" 2>&1)
     
-    # Check if any protected package would be REMOVED
-    if echo "$sim_output" | grep -E "^Remv.*(${PROTECTED_PACKAGES})" > /dev/null 2>&1; then
-        warn "SKIPPING $pkg - installation would remove critical desktop packages!"
-        log "WARN" "Skipped $pkg - would remove: $(echo "$sim_output" | grep -E "^Remv" | head -3)"
-        return 1
+    # Extract only the "Remv" lines (packages that would be removed)
+    local remv_lines
+    remv_lines=$(echo "$sim_output" | grep "^Remv " || true)
+    
+    # Check each protected package
+    if [[ -n "$remv_lines" ]]; then
+        for protected in "${PROTECTED_PACKAGES[@]}"; do
+            # Match exact package name (Remv package-name [version])
+            if echo "$remv_lines" | grep -q "^Remv ${protected} "; then
+                warn "SKIPPING $pkg - would remove protected package: $protected"
+                log "WARN" "Skipped $pkg - would remove $protected"
+                return 1
+            fi
+        done
     fi
     
     # Safe to install
