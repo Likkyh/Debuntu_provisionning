@@ -810,6 +810,33 @@ setup_terminal() {
 }
 
 # ----------------------------------------------------------
+# MODULE 4.6: CONSOLE FONT (Headless/TTY)
+# ----------------------------------------------------------
+setup_console() {
+    step "CONFIGURING CONSOLE FONT"
+    
+    # MartianMono cannot be used directly in TTY (needs PSF)
+    # We will use Terminus if available, which is clean and readable
+    
+    if ! dpkg -l | grep -q "console-setup"; then
+        safe_install console-setup
+    fi
+    
+    if [[ -f /etc/default/console-setup ]]; then
+        info "Setting console font to Terminus..."
+        # Update config
+        sed -i 's/^FONTFACE=.*/FONTFACE="Terminus"/' /etc/default/console-setup
+        sed -i 's/^FONTSIZE=.*/FONTSIZE="16x32"/' /etc/default/console-setup
+        
+        # Apply
+        setupcon --force >> "$LOG_FILE" 2>&1 || true
+        success "Console font updated (Terminus)"
+    else
+        warn "console-setup not found, skipping TTY font config"
+    fi
+}
+
+# ----------------------------------------------------------
 # MODULE 5: ZSH CONFIGURATION
 # ----------------------------------------------------------
 setup_zsh() {
@@ -1402,6 +1429,7 @@ main() {
     ensure_bootloader # Enforce bootloader installation directly
     install_fonts
     setup_terminal
+    setup_console
     setup_zsh
     setup_nano
     setup_fastfetch

@@ -5,7 +5,7 @@
     // Simple, visual, and informative
     // ============================================================
     "logo": {
-        "type": "auto",
+        "type": "builtin",
         "padding": {
             "top": 2,
             "left": 2,
