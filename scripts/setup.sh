@@ -684,7 +684,7 @@ install_essentials() {
     safe_install ufw
     safe_install fail2ban 
     safe_install openssh-server
-    safe_install net-tools dnsutils dbus-x11
+    safe_install net-tools dnsutils dbus-x11 dconf-cli
     
     # 4. Monitoring & Build
     safe_install btop
@@ -777,36 +777,43 @@ EOF
 }
 
 # ----------------------------------------------------------
-# MODULE 4.5: TERMINAL CONFIGURATION
+# MODULE 4.5: SYSTEM-WIDE GNOME DEFAULTS (The Clean Way)
 # ----------------------------------------------------------
-setup_terminal() {
-    step "CONFIGURING TERMINAL PROFILE"
+setup_dconf_defaults() {
+    step "CONFIGURING SYSTEM-WIDE GNOME DEFAULTS"
     
-    get_all_users
-    for user_info in "${ALL_USERS[@]}"; do
-        local username="${user_info%%:*}"
-        
-        # Configure GNOME Terminal if present
-        if command -v gsettings &>/dev/null; then
-             info "Setting MartianMono font for $username..."
-             
-             # 1. Set System-wide Monospace Font (Interfaces)
-             # This is the most robust way - terminal usually follows system font
-             sudo -u "$username" dbus-launch gsettings set org.gnome.desktop.interface monospace-font-name 'MartianMono Nerd Font 11' 2>/dev/null || true
-             
-             # 2. Force Terminal to use System Font (UUID dance)
-             sudo -u "$username" dbus-launch bash -c '
-                uuid=$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d "\047")
-                
-                # Force "Use system font"
-                gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$uuid/" use-system-font true
-                
-                # Backup: explicitly set font just in case
-                gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$uuid/" font "MartianMono Nerd Font 11"
-             ' 2>/dev/null || true
-        fi
-    done
-    success "Terminal and System Monospace font updated"
+    # Ensure dconf-cli is installed (should be in essentials)
+    if ! command -v dconf &>/dev/null; then
+        warn "dconf not found, installing..."
+        apt-get install -y dconf-cli >> "$LOG_FILE" 2>&1
+    fi
+
+    # 1. Create User Profile
+    mkdir -p /etc/dconf/profile
+    echo "user-db:user" > /etc/dconf/profile/user
+    echo "system-db:local" >> /etc/dconf/profile/user
+    
+    # 2. Create Local Database directory
+    mkdir -p /etc/dconf/db/local.d
+    
+    # 3. Define Settings
+    # Enforce MartianMono as the system monospace font
+    # This affects GNOME Terminal, Gedit, Builder, etc.
+    cat << EOF > /etc/dconf/db/local.d/00-debuntu-fonts
+[org/gnome/desktop/interface]
+monospace-font-name='MartianMono Nerd Font 11'
+
+[org/gnome/terminal/legacy/profiles:/:b1dcc9dd-5262-4d8d-a863-c897e6d979b9]
+use-system-font=true
+use-theme-colors=true
+visible-name='Debuntu'
+EOF
+
+    # 4. Update Database
+    info "Updating dconf database..."
+    dconf update >> "$LOG_FILE" 2>&1 || warn "dconf update failed"
+    
+    success "System-wide GNOME defaults applied"
 }
 
 # ----------------------------------------------------------
@@ -837,74 +844,6 @@ setup_console() {
 }
 
 # ----------------------------------------------------------
-# ----------------------------------------------------------
-# MODULE 4.7: SYSTEM APPEARANCE PERSISTENCE (Autostart)
-# ----------------------------------------------------------
-setup_autostart_fix() {
-    step "CONFIGURING APPEARANCE PERSISTENCE"
-    
-    get_all_users
-    for user_info in "${ALL_USERS[@]}"; do
-        local username="${user_info%%:*}"
-        local home="${user_info##*:}"
-        
-        # Only for non-root users with a home
-        if [[ "$username" == "root" ]]; then continue; fi
-        
-        info "Creating autostart fix for $username..."
-        
-        local autostart_dir="$home/.config/autostart"
-        local bin_dir="$home/.local/bin"
-        local script_path="$bin_dir/debuntu-fix-appearance.sh"
-        
-        mkdir -p "$autostart_dir" "$bin_dir"
-        
-        # Create the fix script
-        cat << 'EOF' > "$script_path"
-#!/bin/bash
-# DEBUNTU APPEARANCE FIXER
-# Runs on login to enforce font and colors
-sleep 2
-
-# 1. Enforce Interface Font (GNOME Console / System)
-gsettings set org.gnome.desktop.interface monospace-font-name 'MartianMono Nerd Font 11'
-
-# 2. Enforce Terminal Profile (GNOME Terminal)
-# Iterate ALL profiles to be safe
-PROFILES=$(gsettings get org.gnome.Terminal.ProfilesList list | tr -d "[]',")
-for uuid in $PROFILES; do
-    BASE="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$uuid/"
-    gsettings set "$BASE" font 'MartianMono Nerd Font 11'
-    gsettings set "$BASE" use-system-font false
-    gsettings set "$BASE" use-theme-colors true
-done
-
-# 3. Fallback for Default Profile (if list empty or weird)
-DEF_UUID=$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d "'")
-if [ -n "$DEF_UUID" ]; then
-    BASE="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$DEF_UUID/"
-    gsettings set "$BASE" font 'MartianMono Nerd Font 11'
-    gsettings set "$BASE" use-system-font false
-fi
-EOF
-        chmod +x "$script_path"
-        chown -R "$username:$username" "$bin_dir"
-        
-        # Create Desktop Entry
-        cat << EOF > "$autostart_dir/debuntu-fix.desktop"
-[Desktop Entry]
-Type=Application
-Exec=$script_path
-Hidden=false
-NoDisplay=false
-X-GNOME-Autostart-enabled=true
-Name=Debuntu Appearance Fix
-Comment=Enforces fonts and colors on login
-EOF
-        chown -R "$username:$username" "$autostart_dir"
-    done
-    success "Autostart fix configured"
-}
 
 # MODULE 5: ZSH CONFIGURATION
 # ----------------------------------------------------------
@@ -1497,9 +1436,8 @@ main() {
     install_essentials
     ensure_bootloader # Enforce bootloader installation directly
     install_fonts
-    setup_terminal
     setup_console
-    setup_autostart_fix
+    setup_dconf_defaults
     setup_zsh
     setup_nano
     setup_fastfetch
