@@ -295,30 +295,19 @@ protect_desktop_packages() {
     
     # CRITICAL: Protect boot-essential packages with apt-mark hold
     # These packages must NEVER be removed or the system won't boot
-    step "PROTECTING BOOT-CRITICAL PACKAGES"
+    info "Protecting boot-critical packages..."
     
-    local boot_packages=(
-        "linux-image-*"
-        "linux-headers-*"
-        "grub-pc"
-        "grub-efi-amd64"
-        "grub-common"
-        "grub2-common"
-        "initramfs-tools"
-        "systemd"
-        "systemd-sysv"
-        "init"
-        "dbus"
-    )
+    # Find and hold installed kernel packages
+    local kernel_pkgs
+    kernel_pkgs=$(dpkg -l 2>/dev/null | grep "^ii" | awk '{print $2}' | grep -E "^linux-image-|^linux-headers-" || true)
     
-    # Use dpkg to find installed kernel packages and hold them
-    for pattern in "linux-image-*" "linux-headers-*"; do
-        dpkg -l | grep "^ii" | awk '{print $2}' | grep "^${pattern%\*}" | while read pkg; do
+    if [[ -n "$kernel_pkgs" ]]; then
+        while IFS= read -r pkg; do
             apt-mark hold "$pkg" >> "$LOG_FILE" 2>&1 || true
-        done
-    done
+        done <<< "$kernel_pkgs"
+    fi
     
-    # Hold other critical boot packages
+    # Hold other critical boot packages (ignore errors if not installed)
     for pkg in grub-pc grub-efi-amd64 grub-common grub2-common initramfs-tools systemd systemd-sysv dbus; do
         apt-mark hold "$pkg" >> "$LOG_FILE" 2>&1 || true
     done
