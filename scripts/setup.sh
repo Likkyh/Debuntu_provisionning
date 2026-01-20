@@ -293,12 +293,37 @@ protect_desktop_packages() {
         apt-mark manual "$pkg" >> "$LOG_FILE" 2>&1 || true
     done
     
-    # NOTE: We intentionally do NOT use 'apt-mark hold' here because it blocks
-    # all package upgrades and can prevent unrelated packages (like curl) from
-    # installing due to dependency chain conflicts. apt-mark manual is sufficient
-    # to prevent packages from being auto-removed.
+    # CRITICAL: Protect boot-essential packages with apt-mark hold
+    # These packages must NEVER be removed or the system won't boot
+    step "PROTECTING BOOT-CRITICAL PACKAGES"
     
-    success "Desktop packages protected from auto-removal"
+    local boot_packages=(
+        "linux-image-*"
+        "linux-headers-*"
+        "grub-pc"
+        "grub-efi-amd64"
+        "grub-common"
+        "grub2-common"
+        "initramfs-tools"
+        "systemd"
+        "systemd-sysv"
+        "init"
+        "dbus"
+    )
+    
+    # Use dpkg to find installed kernel packages and hold them
+    for pattern in "linux-image-*" "linux-headers-*"; do
+        dpkg -l | grep "^ii" | awk '{print $2}' | grep "^${pattern%\*}" | while read pkg; do
+            apt-mark hold "$pkg" >> "$LOG_FILE" 2>&1 || true
+        done
+    done
+    
+    # Hold other critical boot packages
+    for pkg in grub-pc grub-efi-amd64 grub-common grub2-common initramfs-tools systemd systemd-sysv dbus; do
+        apt-mark hold "$pkg" >> "$LOG_FILE" 2>&1 || true
+    done
+    
+    success "Desktop and boot-critical packages protected"
 }
 
 # ----------------------------------------------------------
