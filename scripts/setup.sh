@@ -756,24 +756,59 @@ EOF
 setup_zsh() {
     step "CONFIGURING ZSH SHELL"
     
-    # Note: The .zshrc file includes auto-installation of Oh-My-Zsh,
-    # Powerlevel10k, and plugins on first shell startup
+    # INSTALL OH-MY-ZSH & PLUGINS EXPLICITLY
+    # (Don't rely on .zshrc auto-install which often fails)
     
+    # 1. Install for DEFAULT USER (vboxuser, etc)
+    local target_user="$DEFAULT_USER"
+    local target_home="$DEFAULT_HOME"
+    
+    info "Installing Oh-My-Zsh for $target_user..."
+    
+    # Install OMZ
+    if [[ ! -d "$target_home/.oh-my-zsh" ]]; then
+        # Use sudo -u to install as the user (permissions!)
+        # Use --unattended to prevent switching shell immediately
+        sudo -u "$target_user" sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended >> "$LOG_FILE" 2>&1 || {
+             warn "OMZ install script failed. Trying manual clone..."
+             sudo -u "$target_user" git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$target_home/.oh-my-zsh" >> "$LOG_FILE" 2>&1
+        }
+    fi
+    
+    # Install Powerlevel10k
+    local p10k_dir="$target_home/.oh-my-zsh/custom/themes/powerlevel10k"
+    if [[ ! -d "$p10k_dir" ]]; then
+        info "Installing Powerlevel10k..."
+        sudo -u "$target_user" git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$p10k_dir" >> "$LOG_FILE" 2>&1 || true
+    fi
+    
+    # Install Plugins
+    local plugins_dir="$target_home/.oh-my-zsh/custom/plugins"
+    mkdir -p "$plugins_dir"
+    
+    info "Installing ZSH plugins..."
+    if [[ ! -d "$plugins_dir/zsh-autosuggestions" ]]; then
+        sudo -u "$target_user" git clone https://github.com/zsh-users/zsh-autosuggestions "$plugins_dir/zsh-autosuggestions" >> "$LOG_FILE" 2>&1 || true
+    fi
+    
+    if [[ ! -d "$plugins_dir/zsh-syntax-highlighting" ]]; then
+        sudo -u "$target_user" git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$plugins_dir/zsh-syntax-highlighting" >> "$LOG_FILE" 2>&1 || true
+    fi
+    
+    # 2. Deploy Configuration Files
+    info "Deploying .zshrc configuration..."
     get_all_users
-    
     for user_info in "${ALL_USERS[@]}"; do
         local username="${user_info%%:*}"
         local home="${user_info##*:}"
         
-        info "Setting up ZSH for: $username"
-        
-        # Copy .zshrc (handles Oh-My-Zsh auto-install on first login)
+        # Deploy .zshrc
         if [[ -f "$REPO_ROOT/config/.zshrc" ]]; then
             cp "$REPO_ROOT/config/.zshrc" "$home/.zshrc"
             chown "$username:$username" "$home/.zshrc" 2>/dev/null || true
         fi
         
-        # Copy .zshrc_aliases
+        # Deploy .zshrc_aliases
         if [[ -f "$REPO_ROOT/config/.zshrc_aliases" ]]; then
             cp "$REPO_ROOT/config/.zshrc_aliases" "$home/.zshrc_aliases"
             chown "$username:$username" "$home/.zshrc_aliases" 2>/dev/null || true
@@ -781,19 +816,17 @@ setup_zsh() {
         
         # Set ZSH as default shell
         if [[ "$username" != "root" ]]; then
-            chsh -s "$(which zsh)" "$username" 2>/dev/null || {
-                warn "Could not change shell for $username"
-            }
+            chsh -s "$(which zsh)" "$username" 2>/dev/null || true
         fi
     done
     
-    # Also setup for root
+    # Also setup for root (optional, minimalist)
     if [[ -f "$REPO_ROOT/config/.zshrc" ]]; then
         cp "$REPO_ROOT/config/.zshrc" /root/.zshrc
         cp "$REPO_ROOT/config/.zshrc_aliases" /root/.zshrc_aliases 2>/dev/null || true
     fi
     
-    success "ZSH configured (Oh-My-Zsh + Powerlevel10k will install on first login)"
+    success "ZSH configured successfully"
 }
 
 # ----------------------------------------------------------
