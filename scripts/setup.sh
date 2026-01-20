@@ -294,23 +294,48 @@ protect_desktop_packages() {
         apt-mark manual "$pkg" >> "$LOG_FILE" 2>&1 || true
     done
     
-    # CRITICAL: Protect boot-essential packages with apt-mark hold
-    # These packages must NEVER be removed or the system won't boot
+    # CRITICAL: Protect boot-essential packages by marking as manually installed
+    # NOTE: We do NOT use 'apt-mark hold' on grub packages as this can cause
+    # boot failures when apt tries to reconfigure packages during other operations.
+    # Instead, we mark them as manual to prevent autoremove from touching them.
     info "Protecting boot-critical packages..."
     
-    # Find and hold installed kernel packages
+    # Find and mark kernel packages as manually installed
     local kernel_pkgs
     kernel_pkgs=$(dpkg -l 2>/dev/null | grep "^ii" | awk '{print $2}' | grep -E "^linux-image-|^linux-headers-" || true)
     
     if [[ -n "$kernel_pkgs" ]]; then
         while IFS= read -r pkg; do
-            apt-mark hold "$pkg" >> "$LOG_FILE" 2>&1 || true
+            apt-mark manual "$pkg" >> "$LOG_FILE" 2>&1 || true
         done <<< "$kernel_pkgs"
     fi
     
-    # Hold other critical boot packages (ignore errors if not installed)
-    for pkg in grub-pc grub-efi-amd64 grub-common grub2-common initramfs-tools systemd systemd-sysv dbus; do
-        apt-mark hold "$pkg" >> "$LOG_FILE" 2>&1 || true
+    # Mark other critical boot packages as manually installed
+    # This prevents autoremove from ever considering them for removal
+    local boot_packages=(
+        # Bootloader (NEVER hold these - causes boot issues)
+        "grub-pc"
+        "grub-efi-amd64"
+        "grub-efi-amd64-signed"
+        "grub-common"
+        "grub2-common"
+        "shim-signed"
+        
+        # Initramfs and boot
+        "initramfs-tools"
+        "initramfs-tools-core"
+        "linux-base"
+        
+        # System essentials
+        "systemd"
+        "systemd-sysv"
+        "dbus"
+        "dbus-user-session"
+        "efibootmgr"
+    )
+    
+    for pkg in "${boot_packages[@]}"; do
+        apt-mark manual "$pkg" >> "$LOG_FILE" 2>&1 || true
     done
     
     success "Desktop and boot-critical packages protected"
@@ -385,7 +410,30 @@ cleanup_system() {
             apt-mark manual "$pkg" >> "$LOG_FILE" 2>&1 || true
         done
         
-        apt-get autoremove -y >> "$LOG_FILE" 2>&1
+        # SAFE AUTOREMOVE: Check what would be removed before actually removing
+        info "Checking packages to autoremove..."
+        local autoremove_list
+        autoremove_list=$(apt-get autoremove --simulate 2>/dev/null | grep "^Remv " | awk '{print $2}' || true)
+        
+        # Check if any critical packages would be removed
+        local critical_patterns="grub|linux-image|linux-headers|systemd|initramfs|gnome-shell|gdm3|xserver|mutter"
+        local dangerous_pkgs
+        dangerous_pkgs=$(echo "$autoremove_list" | grep -E "$critical_patterns" || true)
+        
+        if [[ -n "$dangerous_pkgs" ]]; then
+            warn "SKIPPING autoremove - would remove critical packages:"
+            echo "$dangerous_pkgs" | while read -r pkg; do
+                warn "  - $pkg"
+            done
+            log "WARN" "Autoremove skipped - dangerous packages: $dangerous_pkgs"
+        elif [[ -n "$autoremove_list" ]]; then
+            info "Autoremove will clean: $(echo "$autoremove_list" | wc -w) packages"
+            apt-get autoremove -y >> "$LOG_FILE" 2>&1 || true
+            success "Autoremove completed safely"
+        else
+            info "No packages to autoremove"
+        fi
+        
         apt-get clean >> "$LOG_FILE" 2>&1
     else
         info "No bloatware packages found to remove"
@@ -427,77 +475,27 @@ install_essentials() {
     info "Updating package lists..."
     apt-get update >> "$LOG_FILE" 2>&1
     
-    # Essential packages
-    local packages=(
-        # Core utilities
-        "curl"
-        "wget"
-        "git"
-        "unzip"
-        "zip"
-        "tar"
-        "gzip"
-        
-        # Text editors
-        "nano"
-        "vim"
-        
-        # System monitoring
-        "btop"
-        
-        # Network tools
-        "net-tools"
-        "dnsutils"
-        
-        # Security
-        "ufw"
-        "fail2ban"
-        "openssh-server"
-        
-        # Shell
-        "zsh"
-        
-        # Build essentials (for plugins)
-        "build-essential"
-        
-        # Modern CLI tools
-        "bat"
-        "lsd"
-        "fd-find"
-        "ripgrep"
-        "fzf"
-        "jq"
-        
-        # LazyVim dependencies
-        "neovim"
-        "nodejs"
-        "npm"
-        "python3"
-        "python3-pip"
-        "python3-venv"
-        
-        # Fastfetch
-        "fastfetch"
-        
-        # Font tools
-        "fontconfig"
-        
-        # Syntax highlighting for nano
-        "nano-syntax-highlighting"
-    )
+    info "Installing all packages in a single command..."
     
-    info "Installing packages (this may take a while)..."
-    
-    for pkg in "${packages[@]}"; do
-        if dpkg -l 2>/dev/null | grep -q "^ii  $pkg "; then
-            log "INFO" "Package $pkg already installed"
-        else
-            info "Installing: $pkg"
-            apt-get install -y "$pkg" >> "$LOG_FILE" 2>&1 || {
-                warn "Failed to install $pkg"
-            }
-        fi
-    done
+    # Install everything in ONE apt install command
+    # This is safer and faster than installing one-by-one
+    apt install -y \
+        curl wget git unzip zip tar gzip \
+        nano vim \
+        btop \
+        net-tools dnsutils \
+        ufw fail2ban openssh-server \
+        zsh \
+        build-essential \
+        bat lsd fd-find ripgrep fzf jq \
+        neovim nodejs npm \
+        python3 python3-pip python3-venv \
+        fastfetch \
+        fontconfig \
+        nano-syntax-highlighting \
+        >> "$LOG_FILE" 2>&1 || {
+            warn "Some packages may have failed to install - check $LOG_FILE"
+        }
     
     success "Essential packages installed"
 }
