@@ -75,6 +75,11 @@
             "keyColor": "red",
             "timeout": 1000
         },
-        "break"
+        "break",
+        {
+            "type": "colors",
+            "symbol": "circle",
+            "paddingLeft": 2
+        }
     ]
 }

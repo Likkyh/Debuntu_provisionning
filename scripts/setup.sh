@@ -777,6 +777,33 @@ EOF
 }
 
 # ----------------------------------------------------------
+# MODULE 4.5: TERMINAL CONFIGURATION
+# ----------------------------------------------------------
+setup_terminal() {
+    step "CONFIGURING TERMINAL PROFILE"
+    
+    get_all_users
+    for user_info in "${ALL_USERS[@]}"; do
+        local username="${user_info%%:*}"
+        
+        # Configure GNOME Terminal if present
+        if command -v gsettings &>/dev/null; then
+             info "Setting MartianMono font for $username terminal..."
+             
+             # Script to set profile font
+             sudo -u "$username" dbus-launch bash -c '
+                # Get default profile UUID
+                uuid=$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d "\047")
+                # Set font
+                gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$uuid/" font "MartianMono Nerd Font 11"
+                gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$uuid/" use-system-font false
+             ' 2>/dev/null || true
+        fi
+    done
+    success "Terminal font updated"
+}
+
+# ----------------------------------------------------------
 # MODULE 5: ZSH CONFIGURATION
 # ----------------------------------------------------------
 setup_zsh() {
@@ -1368,6 +1395,7 @@ main() {
     install_essentials
     ensure_bootloader # Enforce bootloader installation directly
     install_fonts
+    setup_terminal
     setup_zsh
     setup_nano
     setup_fastfetch
