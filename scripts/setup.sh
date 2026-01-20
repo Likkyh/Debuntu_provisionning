@@ -160,12 +160,11 @@ check_dependencies() {
     fi
     
     if [[ ${#missing_deps[@]} -gt 0 ]]; then
-        error "Critical dependencies missing: ${missing_deps[*]}"
-        echo -e "${YELLOW}Please install them manually before running this script:${NC}"
-        echo -e "${BOLD}sudo apt update && sudo apt install -y ${missing_deps[*]}${NC}"
-        exit 1
+        warn "Missing dependencies: ${missing_deps[*]}"
+        warn "Script will attempt to install them or fall back to alternatives."
+    else
+        success "Critical dependencies found (curl, git)"
     fi
-    success "Critical dependencies found (curl, git)"
 }
 
 # ----------------------------------------------------------
@@ -606,6 +605,42 @@ safe_install() {
 }
 
 # ----------------------------------------------------------
+# STATIC CURL INSTALLER (Fallback)
+# ----------------------------------------------------------
+install_static_curl() {
+    # Tries apt first, then static binary
+    if safe_install curl; then
+        return 0
+    fi
+    
+    warn "apt-get install curl failed. Attempting static binary install..."
+    
+    # Static binary from moparisthebest/static-curl
+    local static_url="https://github.com/moparisthebest/static-curl/releases/latest/download/curl-amd64"
+    
+    # We need a downloader. Python is usually present.
+    local dl_cmd=""
+    if command -v python3 &>/dev/null; then
+        dl_cmd="python3 -c \"import urllib.request; urllib.request.urlretrieve('$static_url', '/usr/local/bin/curl')\""
+    elif command -v wget &>/dev/null; then
+        dl_cmd="wget -O /usr/local/bin/curl $static_url"
+    else
+        error "No way to download static curl (python3/wget missing)"
+        return 1
+    fi
+    
+    info "Downloading static curl..."
+    if eval "$dl_cmd"; then
+        chmod +x /usr/local/bin/curl
+        hash -r 2>/dev/null || true
+        success "Static curl installed to /usr/local/bin/curl"
+    else
+        error "Failed to download static curl"
+        return 1
+    fi
+}
+
+# ----------------------------------------------------------
 # MODULE 3: ESSENTIAL PACKAGES
 # ----------------------------------------------------------
 install_essentials() {
@@ -622,14 +657,14 @@ install_essentials() {
         apt-get update >> "$LOG_FILE" 2>&1 || warn "apt-get update failed"
     }
 
-    info "Performing safe system upgrade to consistency..."
-    apt-get upgrade -y >> "$LOG_FILE" 2>&1 || warn "System upgrade had issues"
+    info "Performing safe package list update..."
+    apt-get update >> "$LOG_FILE" 2>&1 || warn "apt-get update failed"
     
     info "Installing packages one-by-one for safety..." 
     
     # 1. Critical Tools
     # Note: curl is checked at start, but we update it here if possible
-    safe_install curl || warn "Curl update failed (using existing version)"
+    install_static_curl || warn "Curl installation failed"
     safe_install wget
     safe_install git
     safe_install unzip zip
