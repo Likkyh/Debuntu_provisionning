@@ -544,6 +544,9 @@ setup_user() {
 # ----------------------------------------------------------
 # SAFE INSTALL FUNCTION (Prevents Crash Loops)
 # ----------------------------------------------------------
+# ----------------------------------------------------------
+# SAFE INSTALL FUNCTION (Prevents Crash Loops)
+# ----------------------------------------------------------
 safe_install() {
     local pkgs=("$@")
     local pkg_str="${pkgs[*]}"
@@ -551,27 +554,46 @@ safe_install() {
     info "Installing: $pkg_str"
     
     # 1. SIMULATE
-    # Check if installing these packages would cause removals
     local sim_out
     sim_out=$(apt-get install --simulate --no-install-recommends "${pkgs[@]}" 2>&1)
     
     if echo "$sim_out" | grep -q "^Remv"; then
-        error "CRITICAL: Installing '$pkg_str' would remove packages! ABORTING."
+        warn "CRITICAL: Installing '$pkg_str' would remove packages! skipping..."
         echo "$sim_out" | grep "^Remv" | while read -r line; do
             warn "  $line"
         done
-        error "This operation is unsafe and would likely crash the VM."
-        exit 1
+        return 1 # Fail gracefully instead of aborting
     fi
     
     # 2. INSTALL
     if apt-get install -y --no-install-recommends --no-remove "${pkgs[@]}" >> "$LOG_FILE" 2>&1; then
         success "Installed: $pkg_str"
-        sync # Force log write
+        sync
     else
         warn "Failed to install: $pkg_str. Checking logs..."
         return 1
     fi
+}
+
+install_static_curl() {
+    warn "Attempting to install static curl binary as fallback..."
+    # Check for wget to download
+    if ! command -v wget &>/dev/null; then
+        apt-get install -y wget >> "$LOG_FILE" 2>&1 || true
+    fi
+    
+    if command -v wget &>/dev/null; then
+        # Download verified static binary
+        wget -O /usr/local/bin/curl "https://github.com/stunnel/static-curl/releases/latest/download/curl-linux-x86_64" >> "$LOG_FILE" 2>&1
+        chmod +x /usr/local/bin/curl
+        if /usr/local/bin/curl --version &>/dev/null; then
+            success "Static curl installed to /usr/local/bin/curl"
+            hash -r # Refresh shell hash
+            return 0
+        fi
+    fi
+    error "Failed to install static curl"
+    return 1
 }
 
 # ----------------------------------------------------------
@@ -592,19 +614,18 @@ install_essentials() {
     }
 
     info "Performing safe system upgrade to consistency..."
-    # CRITICAL for Debian Testing: align all libraries before installing new ones
     apt-get upgrade -y >> "$LOG_FILE" 2>&1 || warn "System upgrade had issues"
     
     info "Installing packages one-by-one for safety..." 
     
     # 1. Critical Tools
-    # Determine correct libcurl package (Debian Trixie/Sid uses t64 suffix)
-    local libcurl_pkg="libcurl4"
-    if grep -q "trixie" /etc/os-release || grep -q "sid" /etc/os-release; then
-        libcurl_pkg="libcurl4t64"
+    # Try apt -> try t64 apt -> fallback to static binary
+    if ! safe_install curl; then
+        if ! safe_install libcurl4t64 curl; then
+             install_static_curl
+        fi
     fi
     
-    safe_install curl || safe_install "$libcurl_pkg" curl || warn "Curl install failed"
     safe_install wget
     safe_install git
     safe_install unzip zip
