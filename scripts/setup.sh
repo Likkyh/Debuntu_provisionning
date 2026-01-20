@@ -477,11 +477,17 @@ cleanup_system() {
         "swell-foop"
         "tali"
         
-        # Other bloat
-        "cheese"  # Webcam app
-        "rhythmbox"  # Music player (optional)
-        "totem"  # Video player (optional)
         "vim-tiny"  # Replace with full vim
+        
+        # Extended Bloatware (Camera, Calendar, etc)
+        "cheese"
+        "gnome-calendar"
+        "gnome-contacts"
+        "gnome-maps"
+        "gnome-weather"
+        "simple-scan"
+        "snapshot"
+        "yelp" # Help viewer
     )
     
     local removed=0
@@ -779,6 +785,123 @@ setup_zsh() {
     # INSTALL OH-MY-ZSH & PLUGINS EXPLICITLY
     # (Don't rely on .zshrc auto-install which often fails)
     
+    # 1. Critical Tools
+    # Note: curl is checked at start, but we update it here if possible
+    install_static_curl || warn "Curl installation failed"
+    safe_install wget
+    safe_install git
+    safe_install unzip zip
+    safe_install gzip tar
+    
+    # 2. Editors & Shell
+    safe_install nano vim
+    safe_install zsh
+    
+    # 3. Security & Net
+    safe_install ufw
+    safe_install fail2ban 
+    safe_install openssh-server
+    safe_install net-tools dnsutils
+    
+    # 4. Monitoring & Build
+    safe_install btop
+    safe_install build-essential
+    
+    # 5. Modern Tools
+    safe_install fzf jq
+    safe_install bat || true
+    safe_install lsd || true
+    safe_install ripgrep || true
+    safe_install fd-find || true
+    safe_install fastfetch || true
+    
+    # 6. Dev Tools
+    safe_install python3 python3-pip python3-venv
+    safe_install nodejs npm
+    safe_install neovim
+    
+    # 7. Sys
+    safe_install fontconfig
+    
+    success "Essential packages installation completed"
+}
+
+# ----------------------------------------------------------
+# MODULE 4: FONT INSTALLATION (via Nerd Fonts CLI)
+# ----------------------------------------------------------
+install_fonts() {
+    step "INSTALLING MARTIANMONO NERD FONT"
+    
+    local font_dest="/usr/local/share/fonts/NerdFonts"
+    
+    info "Installing MartianMono Nerd Font via official installer..."
+    
+    # Use the official Nerd Fonts install script
+    # This downloads and installs fonts to ~/.local/share/fonts by default
+    # We'll install system-wide instead
+    
+    mkdir -p "$font_dest"
+    
+    # Download MartianMono directly from Nerd Fonts releases
+    local font_url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/MartianMono.zip"
+    local temp_zip="/tmp/MartianMono.zip"
+    
+    info "Downloading MartianMono Nerd Font..."
+    
+    if curl -fsSL "$font_url" -o "$temp_zip"; then
+        info "Download successful"
+    else
+        error "Failed to download fonts"
+        return 0
+    fi
+    
+    info "Extracting fonts..."
+    unzip -o "$temp_zip" -d "$font_dest" >> "$LOG_FILE" 2>&1
+    rm -f "$temp_zip"
+    success "MartianMono Nerd Font installed to $font_dest"
+    
+    # Update font cache
+    info "Updating font cache..."
+    fc-cache -fv >> "$LOG_FILE" 2>&1
+    
+    # Set as system-wide default monospace font
+    info "Setting MartianMono as default monospace font..."
+    mkdir -p /etc/fonts/conf.d
+    cat << 'EOF' > /etc/fonts/local.conf
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+    <!-- Set MartianMono Nerd Font as default monospace -->
+    <alias>
+        <family>monospace</family>
+        <prefer>
+            <family>MartianMono Nerd Font</family>
+            <family>MartianMono Nerd Font Mono</family>
+        </prefer>
+    </alias>
+    <alias>
+        <family>Monospace</family>
+        <prefer>
+            <family>MartianMono Nerd Font</family>
+            <family>MartianMono Nerd Font Mono</family>
+        </prefer>
+    </alias>
+</fontconfig>
+EOF
+    
+    fc-cache -fv >> "$LOG_FILE" 2>&1
+    success "MartianMono set as system-wide default monospace font"
+}
+
+# ----------------------------------------------------------
+# MODULE 5: ZSH CONFIGURATION
+# ----------------------------------------------------------
+setup_zsh() {
+    step "CONFIGURING ZSH SHELL"
+    
+    # INSTALL OH-MY-ZSH & PLUGINS EXPLICITLY
+    # (Don't rely on .zshrc auto-install which often fails)
+    
     # 1. Install for DEFAULT USER (vboxuser, etc)
     local target_user="$DEFAULT_USER"
     local target_home="$DEFAULT_HOME"
@@ -889,30 +1012,27 @@ setup_fastfetch() {
     
     get_all_users
     
-    local config_src="$REPO_ROOT/config/fastfetch/config.jsonc"
+    local config_dir="$REPO_ROOT/config/fastfetch"
     
-    if [[ ! -f "$config_src" ]]; then
-        # Try old name
-        config_src="$REPO_ROOT/config/fastfetch/minimalist_config.jsonc"
-    fi
-    
-    if [[ ! -f "$config_src" ]]; then
-        warn "Fastfetch config not found"
+    if [[ ! -d "$config_dir" ]]; then
+        warn "Fastfetch config dir not found"
         return
     fi
     
     for user_info in "${ALL_USERS[@]}"; do
         local username="${user_info%%:*}"
         local home="${user_info##*:}"
+        local user_config_dir="$home/.config/fastfetch"
         
-        mkdir -p "$home/.config/fastfetch"
-        cp "$config_src" "$home/.config/fastfetch/config.jsonc"
-        chown -R "$username:$username" "$home/.config/fastfetch" 2>/dev/null || true
+        mkdir -p "$user_config_dir"
+        # Copy config AND images
+        cp -r "$config_dir/"* "$user_config_dir/"
+        chown -R "$username:$username" "$user_config_dir" 2>/dev/null || true
     done
     
     # Also for root
     mkdir -p /root/.config/fastfetch
-    cp "$config_src" /root/.config/fastfetch/config.jsonc
+    cp -r "$config_dir/"* /root/.config/fastfetch/
     
     success "Fastfetch configured for all users"
 }
@@ -1173,27 +1293,9 @@ cleanup_old_files() {
 }
 
 # ----------------------------------------------------------
-# DARK MODE CONFIGURATION
+# DARK MODE CONFIGURATION - REMOVED (Headless Server Focus)
 # ----------------------------------------------------------
-setup_dark_mode() {
-    step "CONFIGURING DARK MODE"
-    
-    get_all_users
-    for user_info in "${ALL_USERS[@]}"; do
-        local username="${user_info%%:*}"
-        
-        # Only relevant if gsettings (GNOME/GLib) is present
-        if command -v gsettings &>/dev/null; then
-             info "Enabling dark mode for $username..."
-             # Try setting prefer-dark using dbus-launch for headless/script execution
-             sudo -u "$username" dbus-launch gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' 2>/dev/null || true
-             sudo -u "$username" dbus-launch gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark' 2>/dev/null || true
-        else
-             # Silent skip if no GUI libs
-             :
-        fi
-    done
-}
+# setup_dark_mode() { ... }
 
 # ----------------------------------------------------------
 # FINAL SUMMARY
@@ -1269,7 +1371,7 @@ main() {
     setup_zsh
     setup_nano
     setup_fastfetch
-    setup_dark_mode
+    # setup_dark_mode (removed)
     setup_lazyvim
     setup_ufw
     setup_fail2ban
