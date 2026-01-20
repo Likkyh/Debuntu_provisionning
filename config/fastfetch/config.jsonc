@@ -1,187 +1,77 @@
 {
     "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
     // ============================================================
-    // DEBUNTU FASTFETCH CONFIG - Debian/Ubuntu Optimized
-    // Supports: Kitty graphics protocol, Sixel, iTerm2
-    // Fallback: Built-in distro logo (auto-detected)
+    // DEBUNTU FASTFETCH CONFIG - VM Optimized
+    // Simple, visual, and informative
     // ============================================================
     "logo": {
-        // Use image protocols for high-quality logo rendering
-        // Priorities: kitty > sixel > iterm > builtin
         "type": "auto",
-        "source": "auto",
         "padding": {
             "top": 2,
-            "left": 3,
+            "left": 2,
             "right": 2
-        },
-        // Fallback colors for terminals without image support
-        "color": {
-            "1": "blue",
-            "2": "white"
         }
     },
     "display": {
-        "separator": "  ",
-        "color": {
-            "keys": "blue",
-            "title": "blue"
-        }
+        "separator": "  ➜  "
     },
     "modules": [
         "break",
-        // ══════════════════════════════════════════════════════════
-        // H.A.R.D.W.A.R.E
-        // ══════════════════════════════════════════════════════════
         {
-            "type": "custom",
-            "format": "\u001b[34m══ Hardware ══\u001b[0m"
+            "type": "title",
+            "key": "User",
+            "format": "{1}@{2}"
         },
+        "separator",
         {
             "type": "host",
-            "key": "   PC",
-            "keyColor": "blue"
-        },
-        {
-            "type": "cpu",
-            "key": "   CPU",
-            "keyColor": "blue",
-            "format": "{1}"
-        },
-        {
-            "type": "gpu",
-            "key": "  󰍛 GPU",
-            "keyColor": "blue"
-        },
-        {
-            "type": "display",
-            "key": "  󰍹 Display",
-            "keyColor": "blue"
-        },
-        {
-            "type": "memory",
-            "key": "   RAM",
-            "keyColor": "blue"
-        },
-        {
-            "type": "disk",
-            "key": "   Disk",
-            "keyColor": "blue",
-            "format": "{1} / {2} ({3})"
-        },
-        {
-            "type": "battery",
-            "key": "   Battery",
-            "keyColor": "blue"
-        },
-        "break",
-        // ══════════════════════════════════════════════════════════
-        // S.O.F.T.W.A.R.E
-        // ══════════════════════════════════════════════════════════
-        {
-            "type": "custom",
-            "format": "\u001b[33m══ Software ══\u001b[0m"
+            "key": "Virtual Machine",
+            "keyColor": "green"
         },
         {
             "type": "os",
-            "key": "   OS",
+            "key": "OS Distro",
             "keyColor": "yellow"
         },
         {
             "type": "kernel",
-            "key": "   Kernel",
+            "key": "Kernel Ver",
             "keyColor": "yellow"
         },
         {
-            "type": "packages",
-            "key": "  󰏖 Packages",
-            "keyColor": "yellow"
-        },
-        {
-            "type": "shell",
-            "key": "   Shell",
-            "keyColor": "yellow"
-        },
-        {
-            "type": "terminal",
-            "key": "   Terminal",
+            "type": "uptime",
+            "key": "System Uptime",
             "keyColor": "yellow"
         },
         "break",
-        // ══════════════════════════════════════════════════════════
-        // N.E.T.W.O.R.K
-        // ══════════════════════════════════════════════════════════
         {
-            "type": "custom",
-            "format": "\u001b[36m══ Network ══\u001b[0m"
+            "type": "cpu",
+            "key": "vCPU Core",
+            "keyColor": "blue"
         },
         {
-            "type": "command",
-            "key": "   Interface",
-            "keyColor": "cyan",
-            "text": "ip route | grep '^default' | head -n1 | awk '{print $5}'"
+            "type": "memory",
+            "key": "Memory RAM",
+            "keyColor": "blue"
         },
+        {
+            "type": "disk",
+            "key": "Disk Space",
+            "keyColor": "blue"
+        },
+        "break",
         {
             "type": "localip",
-            "key": "  󰩠 IPv4",
-            "keyColor": "cyan",
+            "key": "LAN IP Addr",
+            "keyColor": "magenta",
             "format": "{1}"
         },
         {
             "type": "publicip",
-            "key": "   Public IP",
-            "keyColor": "cyan",
+            "key": "WAN IP Addr",
+            "keyColor": "red",
             "timeout": 1000
         },
-        {
-            "type": "command",
-            "key": "   MAC",
-            "keyColor": "cyan",
-            "text": "dev=$(ip route | grep '^default' | head -n1 | awk '{print $5}'); cat /sys/class/net/$dev/address 2>/dev/null || echo 'N/A'"
-        },
-        {
-            "type": "command",
-            "key": "  󰓅 Link Speed",
-            "keyColor": "cyan",
-            "text": "dev=$(ip route | grep '^default' | head -n1 | awk '{print $5}'); speed=$(cat /sys/class/net/$dev/speed 2>/dev/null); if [ -n \"$speed\" ] && [ \"$speed\" -gt 0 ]; then echo \"${speed} Mbit/s\"; else echo \"Wireless / Virtual\"; fi"
-        },
-        "break",
-        // ══════════════════════════════════════════════════════════
-        // T.I.M.E
-        // ══════════════════════════════════════════════════════════
-        {
-            "type": "custom",
-            "format": "\u001b[35m══ Time/Age ══\u001b[0m"
-        },
-        {
-            "type": "command",
-            "key": "  󰃭 OS Age",
-            "keyColor": "magenta",
-            "text": "birth=$(stat -c %W / 2>/dev/null); if [ -n \"$birth\" ] && [ \"$birth\" -gt 0 ]; then current=$(date +%s); days=$(( (current - birth) / 86400 )); echo \"$days days\"; else echo 'Unknown'; fi"
-        },
-        {
-            "type": "uptime",
-            "key": "   Uptime",
-            "keyColor": "magenta"
-        },
-        {
-            "type": "datetime",
-            "key": "   Date",
-            "keyColor": "magenta",
-            "format": "{1}-{3}-{11} {14}:{17}"
-        },
-        "break",
-        // Color palette
-        {
-            "type": "colors",
-            "paddingLeft": 2,
-            "symbol": "block",
-            "block": {
-                "range": [
-                    1,
-                    8
-                ]
-            }
-        }
+        "break"
     ]
 }
