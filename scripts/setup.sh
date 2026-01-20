@@ -834,6 +834,12 @@ setup_zsh() {
             chown "$username:$username" "$home/.zshrc_aliases" 2>/dev/null || true
         fi
         
+        # Deploy .p10k.zsh
+        if [[ -f "$REPO_ROOT/config/.p10k.zsh" ]]; then
+            cp "$REPO_ROOT/config/.p10k.zsh" "$home/.p10k.zsh"
+            chown "$username:$username" "$home/.p10k.zsh" 2>/dev/null || true
+        fi
+        
         # Set ZSH as default shell
         if [[ "$username" != "root" ]]; then
             chsh -s "$(which zsh)" "$username" 2>/dev/null || true
@@ -1167,6 +1173,29 @@ cleanup_old_files() {
 }
 
 # ----------------------------------------------------------
+# DARK MODE CONFIGURATION
+# ----------------------------------------------------------
+setup_dark_mode() {
+    step "CONFIGURING DARK MODE"
+    
+    get_all_users
+    for user_info in "${ALL_USERS[@]}"; do
+        local username="${user_info%%:*}"
+        
+        # Only relevant if gsettings (GNOME/GLib) is present
+        if command -v gsettings &>/dev/null; then
+             info "Enabling dark mode for $username..."
+             # Try setting prefer-dark using dbus-launch for headless/script execution
+             sudo -u "$username" dbus-launch gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' 2>/dev/null || true
+             sudo -u "$username" dbus-launch gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark' 2>/dev/null || true
+        else
+             # Silent skip if no GUI libs
+             :
+        fi
+    done
+}
+
+# ----------------------------------------------------------
 # FINAL SUMMARY
 # ----------------------------------------------------------
 show_summary() {
@@ -1240,6 +1269,7 @@ main() {
     setup_zsh
     setup_nano
     setup_fastfetch
+    setup_dark_mode
     setup_lazyvim
     setup_ufw
     setup_fail2ban
