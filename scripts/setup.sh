@@ -503,13 +503,27 @@ install_essentials() {
     dpkg --configure -a >> "$LOG_FILE" 2>&1 || true
     
     info "Updating package lists..."
-    apt-get update >> "$LOG_FILE" 2>&1
+    # Debian Testing (Trixie) often changes release info (Codename/Suite)
+    # We must allow this or apt-get update will fail
+    apt-get update --allow-releaseinfo-change >> "$LOG_FILE" 2>&1 || {
+        warn "apt-get update returned error, trying standard update..."
+        apt-get update >> "$LOG_FILE" 2>&1 || warn "apt-get update failed"
+    }
     
     info "Installing essential packages..." 
     
+    # Try installing curl specifically first as it's critical
+    if ! command -v curl &>/dev/null; then
+        info "Installing curl..."
+        if ! apt-get install -y --no-install-recommends curl >> "$LOG_FILE" 2>&1; then
+            warn "Failed to install curl standard package. Attempting fix..."
+            apt-get install -y --no-install-recommends libcurl4 curl >> "$LOG_FILE" 2>&1 || true
+        fi
+    fi
+
     # Use apt-get (more reliable than apt for scripts) with explicit options
     apt-get install -y --no-install-recommends \
-        curl wget git unzip zip \
+        wget git unzip zip \
         nano vim \
         btop \
         net-tools dnsutils \
@@ -521,9 +535,18 @@ install_essentials() {
         python3 python3-pip python3-venv \
         fontconfig \
         >> "$LOG_FILE" 2>&1 || {
-            warn "Some packages failed - check $LOG_FILE"
+            warn "Some packages failed - this is common on Debian Testing. Checking criticals..."
         }
     
+    # Verify critical tools are installed
+    for tool in curl wget git; do
+        if ! command -v "$tool" &>/dev/null; then
+            error "Critical tool '$tool' failed to install."
+            # Try one last fallback for curl/wget
+            apt-get install -y "$tool" >> "$LOG_FILE" 2>&1 || true
+        fi
+    done
+
     # These packages may not exist on all systems, install separately
     info "Installing optional modern CLI tools..."
     apt-get install -y bat 2>> "$LOG_FILE" || true
@@ -556,24 +579,38 @@ install_fonts() {
     local font_url="https://github.com/ryanoasis/nerd-fonts/releases/latest/download/MartianMono.zip"
     local temp_zip="/tmp/MartianMono.zip"
     
-    # Verify curl is available
-    if ! command -v curl &>/dev/null; then
-        error "curl is not available - cannot download fonts"
-        warn "Install curl manually and re-run this script"
+    # Verify curl or wget is available
+    if ! command -v curl &>/dev/null && ! command -v wget &>/dev/null; then
+        error "Neither curl nor wget is available - cannot download fonts"
+        warn "Install curl or wget manually and re-run this script"
         return 0  # Continue with other modules
     fi
     
     info "Downloading MartianMono Nerd Font..."
-    if curl -fsSL "$font_url" -o "$temp_zip"; then
-        info "Extracting fonts..."
-        unzip -o "$temp_zip" -d "$font_dest" >> "$LOG_FILE" 2>&1
-        rm -f "$temp_zip"
-        success "MartianMono Nerd Font installed to $font_dest"
-    else
-        error "Failed to download MartianMono Nerd Font"
-        warn "You can install manually later with: curl -fsSL https://raw.githubusercontent.com/ronniedroid/getnf/master/install.sh | bash"
-        return 0  # Continue with other modules instead of failing
+    
+    if command -v curl &>/dev/null; then
+        if curl -fsSL "$font_url" -o "$temp_zip"; then
+            info "Download successful (curl)"
+        else
+            warn "curl download failed, trying wget..."
+            wget -O "$temp_zip" "$font_url" || {
+                error "Failed to download fonts"
+                return 0
+            }
+        fi
+    elif command -v wget &>/dev/null; then
+        if wget -O "$temp_zip" "$font_url"; then
+            info "Download successful (wget)"
+        else
+            error "Failed to download fonts"
+            return 0
+        fi
     fi
+    
+    info "Extracting fonts..."
+    unzip -o "$temp_zip" -d "$font_dest" >> "$LOG_FILE" 2>&1
+    rm -f "$temp_zip"
+    success "MartianMono Nerd Font installed to $font_dest"
     
     # Update font cache
     info "Updating font cache..."
