@@ -368,6 +368,55 @@ protect_desktop_packages() {
 }
 
 # ----------------------------------------------------------
+# BOOTLOADER VERIFICATION
+# ----------------------------------------------------------
+verify_bootloader() {
+    step "VERIFYING BOOTLOADER INTEGRITY"
+    
+    local grub_cfg_found=false
+    
+    if [[ -f /boot/grub/grub.cfg ]]; then
+        info "Found /boot/grub/grub.cfg"
+        grub_cfg_found=true
+    elif [[ -f /boot/grub2/grub.cfg ]]; then
+        info "Found /boot/grub2/grub.cfg"
+        grub_cfg_found=true
+    fi
+    
+    if [[ "$grub_cfg_found" == "false" ]]; then
+        error "CRITICAL: GRUB configuration missing!"
+        warn "Attempting to reinstall GRUB..."
+        
+        # Detect if EFI or Legacy
+        if [[ -d /sys/firmware/efi ]]; then
+            info "EFI system detected. Reinstalling grub-efi..."
+            apt-get install --reinstall -y --no-remove grub-efi-amd64 grub-efi-amd64-signed || true
+            grub-install >> "$LOG_FILE" 2>&1 || true
+            update-grub >> "$LOG_FILE" 2>&1 || true
+        else
+            info "Legacy BIOS system detected. Reinstalling grub-pc..."
+            # Try to detect boot drive (risky, but better than dead system)
+            local boot_dev=$(findmnt / -n -o SOURCE | sed 's/[0-9]*$//')
+            if [[ -b "$boot_dev" ]]; then
+                apt-get install --reinstall -y --no-remove grub-pc || true
+                grub-install "$boot_dev" >> "$LOG_FILE" 2>&1 || true
+                update-grub >> "$LOG_FILE" 2>&1 || true
+            else
+                warn "Could not detect boot device for grub-install"
+            fi
+        fi
+        
+        if [[ -f /boot/grub/grub.cfg ]]; then
+            success "GRUB restored successfully"
+        else
+            error "Failed to restore GRUB. System may not boot."
+        fi
+    else
+        success "Bootloader configuration looks valid"
+    fi
+}
+
+# ----------------------------------------------------------
 # MODULE 1: SYSTEM CLEANUP
 # ----------------------------------------------------------
 cleanup_system() {
@@ -498,8 +547,11 @@ setup_user() {
 install_essentials() {
     step "INSTALLING ESSENTIAL PACKAGES"
     
-    info "Fixing any broken packages first..."
-    apt-get --fix-broken install -y >> "$LOG_FILE" 2>&1 || true
+    info "Stopping unattended-upgrades to prevent lock conflicts..."
+    systemctl stop unattended-upgrades 2>/dev/null || true
+    
+    # Do NOT run fix-broken blindly as it might remove critical packages
+    # apt-get --fix-broken install -y >> "$LOG_FILE" 2>&1 || true
     dpkg --configure -a >> "$LOG_FILE" 2>&1 || true
     
     info "Updating package lists..."
@@ -513,16 +565,19 @@ install_essentials() {
     info "Installing essential packages..." 
     
     # Try installing curl specifically first as it's critical
+    # Try installing curl specifically first as it's critical
     if ! command -v curl &>/dev/null; then
         info "Installing curl..."
-        if ! apt-get install -y --no-install-recommends curl >> "$LOG_FILE" 2>&1; then
+        # CRITICAL: Use --no-remove to preventing apt from removing conflicting critical packages
+        if ! apt-get install -y --no-install-recommends --no-remove curl >> "$LOG_FILE" 2>&1; then
             warn "Failed to install curl standard package. Attempting fix..."
-            apt-get install -y --no-install-recommends libcurl4 curl >> "$LOG_FILE" 2>&1 || true
+            apt-get install -y --no-install-recommends --no-remove libcurl4 curl >> "$LOG_FILE" 2>&1 || true
         fi
     fi
 
     # Use apt-get (more reliable than apt for scripts) with explicit options
-    apt-get install -y --no-install-recommends \
+    # CRITICAL: --no-remove prevents apt from removing packages to resolve conflicts
+    apt-get install -y --no-install-recommends --no-remove \
         wget git unzip zip \
         nano vim \
         btop \
@@ -1075,6 +1130,7 @@ main() {
     cleanup_system
     setup_user
     install_essentials
+    verify_bootloader # Verify bootloader wasn't nuked by apt
     install_fonts
     setup_zsh
     setup_nano
