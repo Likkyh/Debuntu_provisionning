@@ -119,5 +119,5 @@ fi
 # ----------------------------------------------------------
 # Display system info with fastfetch on interactive shells
 if [[ $- == *i* ]] && command -v fastfetch &> /dev/null; then
-    fastfetch
+    clear && fastfetch
 fi
