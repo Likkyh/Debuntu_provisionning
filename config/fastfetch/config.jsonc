@@ -5,10 +5,7 @@
     // Simple, visual, and informative
     // ============================================================
     "logo": {
-        "type": "kitty",
-        "source": "~/.config/fastfetch/debian.png",
-        "width": 20,
-        "height": 10,
+        "type": "auto",
         "padding": {
             "top": 2,
             "left": 2,

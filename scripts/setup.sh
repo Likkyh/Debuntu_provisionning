@@ -788,19 +788,25 @@ setup_terminal() {
         
         # Configure GNOME Terminal if present
         if command -v gsettings &>/dev/null; then
-             info "Setting MartianMono font for $username terminal..."
+             info "Setting MartianMono font for $username..."
              
-             # Script to set profile font
+             # 1. Set System-wide Monospace Font (Interfaces)
+             # This is the most robust way - terminal usually follows system font
+             sudo -u "$username" dbus-launch gsettings set org.gnome.desktop.interface monospace-font-name 'MartianMono Nerd Font 11' 2>/dev/null || true
+             
+             # 2. Force Terminal to use System Font (UUID dance)
              sudo -u "$username" dbus-launch bash -c '
-                # Get default profile UUID
                 uuid=$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d "\047")
-                # Set font
+                
+                # Force "Use system font"
+                gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$uuid/" use-system-font true
+                
+                # Backup: explicitly set font just in case
                 gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$uuid/" font "MartianMono Nerd Font 11"
-                gsettings set "org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$uuid/" use-system-font false
              ' 2>/dev/null || true
         fi
     done
-    success "Terminal font updated"
+    success "Terminal and System Monospace font updated"
 }
 
 # ----------------------------------------------------------
