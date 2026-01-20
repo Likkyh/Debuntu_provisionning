@@ -866,22 +866,25 @@ setup_autostart_fix() {
 # Runs on login to enforce font and colors
 sleep 2
 
-# 1. Enforce Interface Font
+# 1. Enforce Interface Font (GNOME Console / System)
 gsettings set org.gnome.desktop.interface monospace-font-name 'MartianMono Nerd Font 11'
 
-# 2. Enforce Terminal Profile
-get_uuid() {
-    gsettings get org.gnome.Terminal.ProfilesList default | tr -d "'"
-}
-
-UUID=$(get_uuid)
-if [ -n "$UUID" ]; then
-    BASE="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$UUID/"
-    
-    # Force settings
+# 2. Enforce Terminal Profile (GNOME Terminal)
+# Iterate ALL profiles to be safe
+PROFILES=$(gsettings get org.gnome.Terminal.ProfilesList list | tr -d "[]',")
+for uuid in $PROFILES; do
+    BASE="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$uuid/"
     gsettings set "$BASE" font 'MartianMono Nerd Font 11'
     gsettings set "$BASE" use-system-font false
     gsettings set "$BASE" use-theme-colors true
+done
+
+# 3. Fallback for Default Profile (if list empty or weird)
+DEF_UUID=$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d "'")
+if [ -n "$DEF_UUID" ]; then
+    BASE="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:$DEF_UUID/"
+    gsettings set "$BASE" font 'MartianMono Nerd Font 11'
+    gsettings set "$BASE" use-system-font false
 fi
 EOF
         chmod +x "$script_path"
