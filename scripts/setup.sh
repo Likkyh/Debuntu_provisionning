@@ -542,6 +542,39 @@ setup_user() {
 }
 
 # ----------------------------------------------------------
+# SAFE INSTALL FUNCTION (Prevents Crash Loops)
+# ----------------------------------------------------------
+safe_install() {
+    local pkgs=("$@")
+    local pkg_str="${pkgs[*]}"
+    
+    info "Installing: $pkg_str"
+    
+    # 1. SIMULATE
+    # Check if installing these packages would cause removals
+    local sim_out
+    sim_out=$(apt-get install --simulate --no-install-recommends "${pkgs[@]}" 2>&1)
+    
+    if echo "$sim_out" | grep -q "^Remv"; then
+        error "CRITICAL: Installing '$pkg_str' would remove packages! ABORTING."
+        echo "$sim_out" | grep "^Remv" | while read -r line; do
+            warn "  $line"
+        done
+        error "This operation is unsafe and would likely crash the VM."
+        exit 1
+    fi
+    
+    # 2. INSTALL
+    if apt-get install -y --no-install-recommends --no-remove "${pkgs[@]}" >> "$LOG_FILE" 2>&1; then
+        success "Installed: $pkg_str"
+        sync # Force log write
+    else
+        warn "Failed to install: $pkg_str. Checking logs..."
+        return 1
+    fi
+}
+
+# ----------------------------------------------------------
 # MODULE 3: ESSENTIAL PACKAGES
 # ----------------------------------------------------------
 install_essentials() {
@@ -550,68 +583,54 @@ install_essentials() {
     info "Stopping unattended-upgrades to prevent lock conflicts..."
     systemctl stop unattended-upgrades 2>/dev/null || true
     
-    # Do NOT run fix-broken blindly as it might remove critical packages
-    # apt-get --fix-broken install -y >> "$LOG_FILE" 2>&1 || true
     dpkg --configure -a >> "$LOG_FILE" 2>&1 || true
     
     info "Updating package lists..."
-    # Debian Testing (Trixie) often changes release info (Codename/Suite)
-    # We must allow this or apt-get update will fail
     apt-get update --allow-releaseinfo-change >> "$LOG_FILE" 2>&1 || {
         warn "apt-get update returned error, trying standard update..."
         apt-get update >> "$LOG_FILE" 2>&1 || warn "apt-get update failed"
     }
     
-    info "Installing essential packages..." 
+    info "Installing packages one-by-one for safety..." 
     
-    # Try installing curl specifically first as it's critical
-    # Try installing curl specifically first as it's critical
-    if ! command -v curl &>/dev/null; then
-        info "Installing curl..."
-        # CRITICAL: Use --no-remove to preventing apt from removing conflicting critical packages
-        if ! apt-get install -y --no-install-recommends --no-remove curl >> "$LOG_FILE" 2>&1; then
-            warn "Failed to install curl standard package. Attempting fix..."
-            apt-get install -y --no-install-recommends --no-remove libcurl4 curl >> "$LOG_FILE" 2>&1 || true
-        fi
-    fi
-
-    # Use apt-get (more reliable than apt for scripts) with explicit options
-    # CRITICAL: --no-remove prevents apt from removing packages to resolve conflicts
-    apt-get install -y --no-install-recommends --no-remove \
-        wget git unzip zip \
-        nano vim \
-        btop \
-        net-tools dnsutils \
-        ufw fail2ban openssh-server \
-        zsh \
-        build-essential \
-        fzf jq \
-        neovim nodejs npm \
-        python3 python3-pip python3-venv \
-        fontconfig \
-        >> "$LOG_FILE" 2>&1 || {
-            warn "Some packages failed - this is common on Debian Testing. Checking criticals..."
-        }
+    # 1. Critical Tools
+    safe_install curl || safe_install libcurl4 curl || warn "Curl install failed"
+    safe_install wget
+    safe_install git
+    safe_install unzip zip
+    safe_install gzip tar
     
-    # Verify critical tools are installed
-    for tool in curl wget git; do
-        if ! command -v "$tool" &>/dev/null; then
-            error "Critical tool '$tool' failed to install."
-            # Try one last fallback for curl/wget
-            apt-get install -y "$tool" >> "$LOG_FILE" 2>&1 || true
-        fi
-    done
-
-    # These packages may not exist on all systems, install separately
-    info "Installing optional modern CLI tools..."
-    apt-get install -y bat 2>> "$LOG_FILE" || true
-    apt-get install -y lsd 2>> "$LOG_FILE" || true
-    apt-get install -y fd-find 2>> "$LOG_FILE" || true
-    apt-get install -y ripgrep 2>> "$LOG_FILE" || true
-    apt-get install -y fastfetch 2>> "$LOG_FILE" || true
-    apt-get install -y nano-syntax-highlighting 2>> "$LOG_FILE" || true
+    # 2. Editors & Shell
+    safe_install nano vim
+    safe_install zsh
     
-    success "Essential packages installed"
+    # 3. Security & Net
+    safe_install ufw
+    safe_install fail2ban 
+    safe_install openssh-server
+    safe_install net-tools dnsutils
+    
+    # 4. Monitoring & Build
+    safe_install btop
+    safe_install build-essential
+    
+    # 5. Modern Tools
+    safe_install fzf jq
+    safe_install bat || true
+    safe_install lsd || true
+    safe_install ripgrep || true
+    safe_install fd-find || true
+    safe_install fastfetch || true
+    
+    # 6. Dev Tools
+    safe_install python3 python3-pip python3-venv
+    safe_install nodejs npm
+    safe_install neovim
+    
+    # 7. Sys
+    safe_install fontconfig
+    
+    success "Essential packages installation completed"
 }
 
 # ----------------------------------------------------------
