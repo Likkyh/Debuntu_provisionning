@@ -34,8 +34,7 @@ set autoindent
 # Show cursor position in the status bar
 set constantshow
 
-# Smooth scrolling (line by line instead of half-screen)
-set smooth
+# Smooth scrolling is default since nano 4.0 (no longer needs 'set smooth')
 
 # Enable soft line wrapping (don't break long lines)
 set softwrap

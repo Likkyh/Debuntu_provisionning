@@ -8,142 +8,99 @@
 
 ---
 
-## ✨ Features
+## Features
 
-- 🧹 **System Cleanup** - Removes bloatware and unnecessary packages
-- 👤 **User Management** - Configures sudo and permissions
-- 🔤 **MartianMono Nerd Font** - Downloaded via Nerd Fonts CLI, set as system-wide default
-- 🐚 **ZSH + Oh-My-Zsh** - With Powerlevel10k theme and useful plugins
-- ⌨️ **LazyVim** - Full Neovim IDE experience for all users
-- 🖥️ **Fastfetch** - Beautiful system info with image protocol support
-- 🔒 **SSH Hardening** - Key-based auth, modern cryptography
-- 🛡️ **UFW + fail2ban** - Firewall and intrusion prevention
+- **System Cleanup** — Removes bloatware, games, and telemetry packages
+- **MartianMono Nerd Font** — Installed system-wide as the default monospace font
+- **ZSH + Oh-My-Zsh + Powerlevel10k** — Pre-installed for all users (including root)
+- **Fastfetch** — System info on terminal open
+- **SSH Hardening** — Key-based auth with modern crypto (conditional — skipped if no key provided)
+- **UFW + fail2ban** — Firewall and SSH intrusion prevention
+- **Idempotent** — Safe to run multiple times
 
 ---
 
-## 📁 Directory Structure
+## Directory Structure
 
 ```
 Debuntu_provisionning/
 ├── config/
 │   ├── fastfetch/
-│   │   └── config.jsonc       # Fastfetch config (kitty/sixel support)
-│   ├── .nanorc                # Nano editor config with syntax highlighting
-│   ├── .zshrc                 # ZSH config with Oh-My-Zsh + Powerlevel10k
-│   └── .zshrc_aliases         # Custom command aliases
+│   │   └── config.jsonc       # Fastfetch config
+│   ├── .nanorc                # Nano editor config
+│   ├── .p10k.zsh             # Powerlevel10k prompt config
+│   ├── .zshrc                # ZSH config (Oh-My-Zsh + Powerlevel10k)
+│   └── .zshrc_aliases        # Custom command aliases
 ├── scripts/
-│   └── setup.sh               # 🚀 Main provisioning script (includes SSH hardening)
-└── README.md                  # This file
+│   └── setup.sh              # Main provisioning script
+└── README.md
 ```
 
 ---
 
-## ⚠️ Prerequisites
-Before running this script, you must have `curl` and `git` installed.
-On a fresh system:
-```bash
-sudo apt update && sudo apt install -y curl git
-```
+## Quick Start
 
-## 🚀 Quick Start
-
-### One-liner Installation
+### Option 1: Clone and run
 
 ```bash
 git clone https://github.com/Likkyh/Debuntu_provisionning.git
 cd Debuntu_provisionning
-chmod +x scripts/setup.sh
-sudo ./scripts/setup.sh
+sudo bash scripts/setup.sh
 ```
 
-### Step-by-Step
+### Option 2: curl | bash (self-bootstrapping)
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/Likkyh/Debuntu_provisionning.git
-   cd Debuntu_provisionning
-   ```
+```bash
+curl -fsSL https://raw.githubusercontent.com/Likkyh/Debuntu_provisionning/main/scripts/setup.sh | sudo bash
+```
 
-3. **Make the script executable:**
-   ```bash
-   chmod +x scripts/setup.sh
-   ```
+The script will auto-clone the repository to get configuration files.
 
-4. **Run with sudo:**
-   ```bash
-   sudo ./scripts/setup.sh
-   ```
+### What happens
 
-4. **Follow the prompts:**
-   - The script will ask for your SSH public key
-   - All steps are logged to `/var/log/debuntu-setup.log`
-
-5. **Log out and back in** to activate ZSH
+1. The script asks for your **SSH public key** (press Enter to skip)
+2. Bloatware is removed, essential packages are installed
+3. ZSH, fonts, configs are deployed for **all users** (UID >= 1000 + root)
+4. UFW and fail2ban are configured
+5. SSH is hardened **only if** an SSH key is present (prevents lockout)
+6. Everything is logged to `/var/log/debuntu-setup.log`
 
 ---
 
-## 📦 Packages Installed
+## Packages
 
-### Core Utilities
-| Package | Description |
-|---------|-------------|
-| `curl`, `wget` | HTTP clients |
-| `git` | Version control |
-| `unzip`, `zip`, `tar` | Archive tools |
+### Installed
 
-### Modern CLI Tools
-| Package | Replaces | Description |
-|---------|----------|-------------|
-| `bat` | `cat` | Syntax highlighting |
-| `lsd` | `ls` | Modern ls with icons |
-| `fd-find` | `find` | Fast file finder |
-| `ripgrep` | `grep` | Fast regex search |
-| `fzf` | - | Fuzzy finder |
-| `btop` | `top`/`htop` | Resource monitor |
+| Category | Packages |
+|----------|----------|
+| Core | `curl`, `wget`, `git`, `unzip`, `zip`, `tar` |
+| Editors | `nano`, `vim`, `zsh` |
+| Modern CLI | `bat`, `lsd`, `fd-find`, `ripgrep`, `fzf`, `btop`, `fastfetch` |
+| Dev | `python3`, `pip`, `nodejs`, `npm`, `build-essential` |
+| Security | `ufw`, `fail2ban`, `openssh-server` |
+| Fonts | `fontconfig`, MartianMono Nerd Font |
 
-### Development
-| Package | Description |
-|---------|-------------|
-| `neovim` | Modern Vim (LazyVim base) |
-| `nodejs`, `npm` | JavaScript runtime |
-| `python3`, `pip` | Python 3 |
-
-### Security
-| Package | Description |
-|---------|-------------|
-| `ufw` | Firewall |
-| `fail2ban` | Intrusion prevention |
-| `openssh-server` | SSH daemon |
-
----
-
-## 🗑️ Packages Removed
-
-The following bloatware packages are removed if present:
+### Removed
 
 | Package | Reason |
 |---------|--------|
-| `vim-tiny` | Replaced by full `vim` + LazyVim |
+| `vim-tiny` | Replaced by full `vim` |
 | `popularity-contest` | Telemetry |
-| `reportbug` | Debian bug reporting |
-| GNOME Games | All games removed |
-| `cheese` | Webcam app |
-
-> **Note:** `nano` is preserved as requested.
+| `reportbug` | Unnecessary on provisioned VMs |
+| GNOME games | All games (aisleriot, mines, sudoku, etc.) |
+| `cheese`, `gnome-calendar`, `gnome-contacts`, `gnome-maps`, `gnome-weather`, `simple-scan`, `yelp` | Unnecessary apps |
 
 ---
 
-## 🔧 Configuration Details
+## Configuration
 
-### ZSH Configuration
+### ZSH
 
-The `.zshrc` automatically installs:
-- **Oh-My-Zsh** - ZSH framework
-- **Powerlevel10k** - Fast, customizable prompt
-- **zsh-autosuggestions** - Fish-like suggestions
-- **zsh-syntax-highlighting** - Command highlighting
+Oh-My-Zsh, Powerlevel10k, and plugins are **pre-installed by the script** — the `.zshrc` does not auto-install anything at shell startup.
 
-**Customize your prompt:**
+Plugins enabled: `git`, `sudo`, `command-not-found`, `zsh-autosuggestions`, `zsh-syntax-highlighting`, `colored-man-pages`, `extract`
+
+Customize your prompt:
 ```bash
 p10k configure
 ```
@@ -152,30 +109,28 @@ p10k configure
 
 | Alias | Command | Description |
 |-------|---------|-------------|
-| `ls` | `lsd --group-directories-first` | Modern ls |
+| `ls` | `lsd --group-directories-first` | Modern ls with icons |
 | `ll` | `lsd -lAh ...` | Long listing |
-| `cat` | `bat --paging=never` | With syntax highlighting |
+| `cat` | `bat --paging=never` | Syntax highlighted cat |
 | `update` | `sudo apt update && upgrade -y` | System update |
-| `v` | `nvim` | Open Neovim |
+| `v` / `vi` / `vim` | `nvim` | Neovim |
+| `top` / `htop` | `btop` | Resource monitor |
 
 ### Fastfetch
 
-Displays system information on terminal open with:
-- Image protocol support (kitty/sixel)
-- Hardware, software, network, and time sections
-- Auto-detects distro logo
+Runs on every interactive shell open (configured in `.zshrc`). Config lives at `~/.config/fastfetch/config.jsonc`.
 
 ---
 
-## 🔒 Security Configuration
+## Security
 
 ### UFW Firewall
-```bash
+
+```
 Default: deny incoming, allow outgoing
 Allowed: SSH (port 22)
 ```
 
-**Manage rules:**
 ```bash
 sudo ufw status           # View status
 sudo ufw allow 80/tcp     # Allow HTTP
@@ -184,55 +139,42 @@ sudo ufw delete allow 80  # Remove rule
 
 ### fail2ban
 
-Configured to protect SSH:
+SSH jail configured:
 - **Max retries:** 3
 - **Ban time:** 24 hours
 - **Find time:** 10 minutes
 
-**Check status:**
 ```bash
 sudo fail2ban-client status sshd
 ```
 
 ### SSH Hardening
 
-The SSH daemon is hardened with:
+Applied **only when an SSH key is present** (prevents lockout):
 - Root login disabled
 - Password authentication disabled
 - Public key authentication only
 - Modern cryptographic algorithms (post-quantum ready)
-- Login banner enabled
+- `Include` directive placed before all settings (correct sshd_config ordering)
 
-> SSH hardening is automatically performed by `setup.sh`. The script will guide you through adding your SSH public key before disabling password authentication.
-
----
-
-## 📋 Post-Installation Checklist
-
-- [ ] Log out and back in to activate ZSH
-- [ ] Run `p10k configure` to customize prompt
-- [ ] Open `nvim` to let LazyVim install plugins
-- [ ] Verify SSH key login works before closing session
-- [ ] Review UFW rules: `sudo ufw status`
-- [ ] Delete this checklist once verified ✓
-
----
-
-## 📝 Log File
-
-All operations are logged to:
-```
-/var/log/debuntu-setup.log
-```
-
-View the log:
+If no SSH key is provided during setup, you can add one later and re-run the script:
 ```bash
-cat /var/log/debuntu-setup.log
+echo 'your-public-key' >> ~/.ssh/authorized_keys
+sudo bash scripts/setup.sh
 ```
 
 ---
 
-## 🛠️ Troubleshooting
+## Post-Installation
+
+1. Log out and back in to activate ZSH
+2. Run `p10k configure` to customize your prompt
+3. Verify SSH key login works before closing your session
+4. Review UFW rules: `sudo ufw status`
+
+---
+
+## Troubleshooting
 
 ### ZSH not default shell
 ```bash
@@ -247,28 +189,21 @@ fc-cache -fv
 ```
 
 ### SSH locked out
-If you're locked out, use console access to:
+Use console/VNC access:
 ```bash
 sudo nano /etc/ssh/sshd_config
-# Set PasswordAuthentication yes
+# Set: PasswordAuthentication yes
 sudo systemctl restart ssh
 ```
 
-### Fastfetch not running
-```bash
-# Check if installed
-which fastfetch
+---
 
-# Install manually
-sudo apt install fastfetch
-```
+## Log File
+
+All operations are logged to `/var/log/debuntu-setup.log`.
 
 ---
 
-## 📄 License
+## License
 
-MIT License - Feel free to use and modify.
-
----
-
-**Made with ❤️ for the sysadmin community**
+MIT License

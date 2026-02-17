@@ -1,56 +1,21 @@
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Initialization code that may require console input (password prompts, [y/n]
+# confirmations, etc.) must go above this block; everything else may go below.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+    source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
 # ============================================================
 # DEBUNTU ZSH CONFIG - ~/.zshrc
 # Optimized for Debian/Ubuntu with Oh-My-Zsh + Powerlevel10k
 # ============================================================
 
 # ----------------------------------------------------------
-# OH-MY-ZSH INSTALLATION CHECK
-# Automatically installs Oh-My-Zsh if not present
+# OH-MY-ZSH
 # ----------------------------------------------------------
 export ZSH="$HOME/.oh-my-zsh"
 
-# Install Oh-My-Zsh if not already installed
-if [[ ! -d "$ZSH" ]]; then
-    echo "Installing Oh-My-Zsh..."
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-fi
-
-# ----------------------------------------------------------
-# POWERLEVEL10K THEME
-# ----------------------------------------------------------
-# Check if Powerlevel10k is installed, install if missing
-if [[ ! -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k" ]]; then
-    echo "Installing Powerlevel10k theme..."
-    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k" 2>/dev/null
-fi
-
 ZSH_THEME="powerlevel10k/powerlevel10k"
-
-# ----------------------------------------------------------
-# POWERLEVEL10K CONFIGURATION
-# ----------------------------------------------------------
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh
-[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
-
-# Enable Powerlevel10k instant prompt (must be near top of .zshrc)
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-    source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-
-# ----------------------------------------------------------
-# OH-MY-ZSH PLUGINS
-# ----------------------------------------------------------
-# Install zsh-autosuggestions if not present
-if [[ ! -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions" ]]; then
-    echo "Installing zsh-autosuggestions..."
-    git clone https://github.com/zsh-users/zsh-autosuggestions "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions" 2>/dev/null
-fi
-
-# Install zsh-syntax-highlighting if not present
-if [[ ! -d "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting" ]]; then
-    echo "Installing zsh-syntax-highlighting..."
-    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting" 2>/dev/null
-fi
 
 plugins=(
     git                     # Git aliases and functions
@@ -62,10 +27,13 @@ plugins=(
     extract                 # Universal archive extraction
 )
 
-# ----------------------------------------------------------
-# SOURCE OH-MY-ZSH
-# ----------------------------------------------------------
 source "$ZSH/oh-my-zsh.sh"
+
+# ----------------------------------------------------------
+# POWERLEVEL10K CONFIGURATION
+# ----------------------------------------------------------
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh
+[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
 
 # ----------------------------------------------------------
 # HISTORY CONFIGURATION
@@ -113,10 +81,6 @@ export PATH="$HOME/.local/bin:$PATH"
 if [[ -f ~/.zshrc_aliases ]]; then
     source ~/.zshrc_aliases
 fi
-
-# ----------------------------------------------------------
-# (Moved P10k Config to top)
-# ----------------------------------------------------------
 
 # ----------------------------------------------------------
 # STARTUP
