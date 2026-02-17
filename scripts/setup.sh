@@ -589,7 +589,7 @@ setup_zsh() {
                     warn "OMZ install failed for $username"; continue
                 }
             else
-                sudo -u "$username" git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$home/.oh-my-zsh" >> "$LOG_FILE" 2>&1 || {
+                sudo -u "$username" git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$home/.oh-my-zsh" 2>&1 | tee -a "$LOG_FILE" >/dev/null || {
                     warn "OMZ install failed for $username"; continue
                 }
             fi
@@ -601,7 +601,7 @@ setup_zsh() {
             if [[ "$username" == "root" ]]; then
                 git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$p10k_dir" >> "$LOG_FILE" 2>&1 || true
             else
-                sudo -u "$username" git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$p10k_dir" >> "$LOG_FILE" 2>&1 || true
+                sudo -u "$username" git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$p10k_dir" 2>&1 | tee -a "$LOG_FILE" >/dev/null || true
             fi
         fi
 
@@ -700,11 +700,13 @@ setup_ufw() {
         warn "UFW has $rule_count existing rule(s) — resetting to defaults"
     fi
 
-    ufw --force reset   >> "$LOG_FILE" 2>&1
-    ufw default deny incoming  >> "$LOG_FILE" 2>&1
-    ufw default allow outgoing >> "$LOG_FILE" 2>&1
-    ufw allow ssh comment 'SSH' >> "$LOG_FILE" 2>&1
-    ufw --force enable  >> "$LOG_FILE" 2>&1
+    {
+        ufw --force reset
+        ufw default deny incoming
+        ufw default allow outgoing
+        ufw allow ssh comment 'SSH'
+        ufw --force enable
+    } >> "$LOG_FILE" 2>&1
 
     success "UFW configured: deny incoming, allow SSH"
     ufw status verbose
@@ -797,7 +799,8 @@ setup_ssh() {
 }
 
 harden_sshd() {
-    local backup_dir="/etc/ssh/backup_$(date +%Y%m%d_%H%M%S)"
+    local backup_dir
+    backup_dir="/etc/ssh/backup_$(date +%Y%m%d_%H%M%S)"
     mkdir -p "$backup_dir"
     cp -p /etc/ssh/sshd_config "$backup_dir/" 2>/dev/null || true
     cp -rp /etc/ssh/sshd_config.d "$backup_dir/" 2>/dev/null || true
@@ -929,10 +932,12 @@ show_summary() {
 # ============================================================
 main() {
     mkdir -p "$(dirname "$LOG_FILE")"
-    echo "=== DEBUNTU PROVISIONING LOG ===" > "$LOG_FILE"
-    echo "Started: $(date)"               >> "$LOG_FILE"
-    echo "Version: $SCRIPT_VERSION"        >> "$LOG_FILE"
-    echo ""                                >> "$LOG_FILE"
+    {
+        echo "=== DEBUNTU PROVISIONING LOG ==="
+        echo "Started: $(date)"
+        echo "Version: $SCRIPT_VERSION"
+        echo ""
+    } > "$LOG_FILE"
 
     show_banner
     preflight_checks
