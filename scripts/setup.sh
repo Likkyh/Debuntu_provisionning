@@ -388,7 +388,7 @@ safe_install() {
         return 1
     fi
 
-    if apt-get install -y --no-install-recommends --no-remove "${pkgs[@]}" >> "$LOG_FILE" 2>&1; then
+    if apt-get install -y --no-install-recommends "${pkgs[@]}" >> "$LOG_FILE" 2>&1; then
         success "Installed: $pkg_str"
     else
         warn "Failed to install: $pkg_str"
@@ -580,6 +580,12 @@ setup_zsh() {
         local username="${user_info%%:*}"
         local home="${user_info##*:}"
 
+        # Ensure home directory exists
+        if [[ ! -d "$home" ]]; then
+            warn "Home directory $home does not exist for $username — skipping"
+            continue
+        fi
+
         info "Setting up ZSH for $username..."
 
         # --- Oh-My-Zsh ---
@@ -589,7 +595,8 @@ setup_zsh() {
                     warn "OMZ install failed for $username"; continue
                 }
             else
-                sudo -u "$username" git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$home/.oh-my-zsh" 2>&1 | tee -a "$LOG_FILE" >/dev/null || {
+                # shellcheck disable=SC2024 # redirect intentionally runs as root
+                sudo -u "$username" git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$home/.oh-my-zsh" >> "$LOG_FILE" 2>&1 || {
                     warn "OMZ install failed for $username"; continue
                 }
             fi
@@ -601,7 +608,8 @@ setup_zsh() {
             if [[ "$username" == "root" ]]; then
                 git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$p10k_dir" >> "$LOG_FILE" 2>&1 || true
             else
-                sudo -u "$username" git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$p10k_dir" 2>&1 | tee -a "$LOG_FILE" >/dev/null || true
+                # shellcheck disable=SC2024
+                sudo -u "$username" git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$p10k_dir" >> "$LOG_FILE" 2>&1 || true
             fi
         fi
 
@@ -695,8 +703,8 @@ setup_ufw() {
 
     # Warn before reset if existing rules are present
     local rule_count
-    rule_count=$(ufw status 2>/dev/null | grep -cE '^\[' || echo 0)
-    if [[ "$rule_count" -gt 0 ]]; then
+    rule_count=$(ufw status 2>/dev/null | grep -cE '^[0-9]+|^Anywhere' || true)
+    if [[ "${rule_count:-0}" -gt 0 ]]; then
         warn "UFW has $rule_count existing rule(s) — resetting to defaults"
     fi
 
@@ -706,7 +714,7 @@ setup_ufw() {
         ufw default allow outgoing
         ufw allow ssh comment 'SSH'
         ufw --force enable
-    } >> "$LOG_FILE" 2>&1
+    } >> "$LOG_FILE" 2>&1 || warn "UFW configuration failed (iptables may be missing)"
 
     success "UFW configured: deny incoming, allow SSH"
     ufw status verbose
@@ -740,8 +748,8 @@ maxretry = 3
 bantime  = 24h
 F2B
 
-    systemctl enable fail2ban >> "$LOG_FILE" 2>&1
-    systemctl restart fail2ban >> "$LOG_FILE" 2>&1
+    systemctl enable fail2ban >> "$LOG_FILE" 2>&1 || true
+    systemctl restart fail2ban >> "$LOG_FILE" 2>&1 || true
     success "fail2ban configured for SSH protection"
 }
 
@@ -880,8 +888,8 @@ SSHBANNER
 
     if sshd -t 2>/dev/null; then
         success "SSH configuration valid"
-        systemctl enable ssh.service  2>/dev/null || systemctl enable sshd.service  2>/dev/null
-        systemctl restart ssh.service 2>/dev/null || systemctl restart sshd.service 2>/dev/null
+        systemctl enable ssh.service  2>/dev/null || systemctl enable sshd.service  2>/dev/null || true
+        systemctl restart ssh.service 2>/dev/null || systemctl restart sshd.service 2>/dev/null || true
         success "SSH daemon restarted with hardened config"
     else
         error "SSH config validation failed — restoring backup"
