@@ -1,0 +1,56 @@
+# ============================================================
+# DEBUNTU NANO CONFIG - ~/.nanorc
+# Enhanced nano configuration
+# ============================================================
+
+# ----------------------------------------------------------
+# SYNTAX HIGHLIGHTING
+# ----------------------------------------------------------
+include "/usr/share/nano-syntax-highlighting/*.nanorc"
+include "/usr/share/nano/*.nanorc"
+
+# ----------------------------------------------------------
+# VISUAL SETTINGS
+# ----------------------------------------------------------
+set linenumbers
+set tabsize 4
+set tabstospaces
+set autoindent
+set constantshow
+
+# 'set smooth' est obsolète. Nano défile désormais de manière fluide par défaut.
+# Si tu veux un défilement par blocs, utilise 'set jumpyscrolling'
+
+set softwrap
+
+# ----------------------------------------------------------
+# INTERFACE COLORS
+# ----------------------------------------------------------
+set titlecolor bold,white,blue
+set statuscolor bold,white,blue
+set keycolor cyan
+set functioncolor white
+set selectedcolor black,cyan
+set numbercolor cyan
+
+# ----------------------------------------------------------
+# EDITING BEHAVIOR
+# ----------------------------------------------------------
+set mouse
+
+set positionlog
+set smarthome
+set multibuffer
+
+# ----------------------------------------------------------
+# SEARCH BEHAVIOR
+# ----------------------------------------------------------
+# Note : 'set casesensitive' désactive la recherche insensible à la casse.
+# Si tu veux que 'A' trouve 'a', commente la ligne ci-dessous.
+set casesensitive
+
+# ----------------------------------------------------------
+# BACKUP SETTINGS
+# ----------------------------------------------------------
+# set backup
+# set backupdir "~/.nano/backups"

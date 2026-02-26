@@ -1,0 +1,16 @@
+# Secrets
+*.key
+*.pem
+*.crt
+.env
+
+# Editor
+*~
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
