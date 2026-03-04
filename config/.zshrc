@@ -9,11 +9,9 @@
 # ----------------------------------------------------------
 export ZSH="$HOME/.oh-my-zsh"
 
-# Install Oh-My-Zsh if not already installed
-if [[ ! -d "$ZSH" ]]; then
-    echo "Installing Oh-My-Zsh..."
-    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-fi
+# Oh-My-Zsh is installed by the Debuntu provisioning script (setup.sh).
+# If missing, clone it manually:
+#   git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh
 
 # ----------------------------------------------------------
 # POWERLEVEL10K THEME
@@ -117,8 +115,8 @@ export LESS_TERMCAP_ue=$'\e[0m'         # end underline
 # ----------------------------------------------------------
 # ENVIRONMENT VARIABLES
 # ----------------------------------------------------------
-export EDITOR='nvim'
-export VISUAL='nvim'
+export EDITOR='nano'
+export VISUAL='nano'
 export PAGER='less'
 
 # Add local bin to PATH

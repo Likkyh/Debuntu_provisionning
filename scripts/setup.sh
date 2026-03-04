@@ -207,9 +207,18 @@ prompt_ssh_key() {
     fi
 
     echo ""
-    echo -e "${CYAN}How to generate an SSH key:${NC}"
-    echo "  ssh-keygen -t ed25519 -C \"your_email@example.com\""
-    echo "  cat ~/.ssh/id_ed25519.pub"
+    echo -e "${CYAN}${BOLD}How to get your SSH public key:${NC}"
+    echo ""
+    echo -e "${BOLD}  Linux / macOS:${NC}"
+    echo "    cat ~/.ssh/id_ed25519.pub"
+    echo "    (or cat ~/.ssh/id_rsa.pub for RSA keys)"
+    echo ""
+    echo -e "${BOLD}  Windows (PowerShell):${NC}"
+    echo "    type \$env:USERPROFILE\\.ssh\\id_ed25519.pub"
+    echo "    (or type \$env:USERPROFILE\\.ssh\\id_rsa.pub for RSA keys)"
+    echo ""
+    echo -e "${CYAN}If you don't have a key yet, generate one:${NC}"
+    echo "    ssh-keygen -t ed25519 -C \"your_email@example.com\""
     echo ""
     echo "Paste your SSH public key (starts with 'ssh-rsa' or 'ssh-ed25519')."
     echo -e "${YELLOW}Press Enter on an empty line to SKIP.${NC}"
@@ -415,7 +424,7 @@ install_essentials() {
     safe_install wget git unzip zip gzip tar
 
     # Editors & shell
-    safe_install nano vim zsh
+    safe_install nano nano-syntax-highlighting vim zsh
 
     # Security & networking
     safe_install ufw openssh-server
