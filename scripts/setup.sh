@@ -424,7 +424,8 @@ install_essentials() {
     safe_install wget git unzip zip gzip tar
 
     # Editors & shell
-    safe_install nano nano-syntax-highlighting vim zsh
+    safe_install nano vim zsh
+    safe_install nano-syntax-highlighting || true
 
     # Security & networking
     safe_install ufw openssh-server
