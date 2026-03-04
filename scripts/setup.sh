@@ -971,71 +971,17 @@ harden_sshd() {
     cp -rp /etc/ssh/sshd_config.d "$backup_dir/" 2>/dev/null || true
     info "sshd_config backed up to $backup_dir"
 
-    local ssh_port="${SSH_PORT:-22}"
+    local sshd_src="$REPO_ROOT/config/sshd_config"
+    if [[ ! -f "$sshd_src" ]]; then
+        error "sshd_config not found in repository ($sshd_src)"
+        return 1
+    fi
 
-    # Include MUST come before any settings to avoid parse issues
-    cat << EOF > /etc/ssh/sshd_config
-# ============================================================
-# DEBUNTU HARDENED SSH CONFIG — generated $(date '+%Y-%m-%d %H:%M:%S')
-# ============================================================
+    cp "$sshd_src" /etc/ssh/sshd_config
+    chmod 644 /etc/ssh/sshd_config
 
-# Include drop-in configs FIRST (before any settings)
-Include /etc/ssh/sshd_config.d/*.conf
-
-# Network
-Port $ssh_port
-AddressFamily inet
-
-# Authentication
-PermitRootLogin no
-PubkeyAuthentication yes
-PasswordAuthentication no
-PermitEmptyPasswords no
-KbdInteractiveAuthentication no
-UsePAM yes
-MaxAuthTries 3
-MaxSessions 3
-
-# Session
-LoginGraceTime 30
-ClientAliveInterval 300
-ClientAliveCountMax 2
-
-# Security
-X11Forwarding no
-AllowAgentForwarding no
-AllowTcpForwarding no
-PermitTunnel no
-
-# Banner
-Banner /etc/ssh/banner
-
-# Logging
-SyslogFacility AUTH
-LogLevel VERBOSE
-
-# SFTP
-Subsystem sftp /usr/lib/openssh/sftp-server
-EOF
-
-    # Modern crypto
-    mkdir -p /etc/ssh/sshd_config.d
-    cat << 'CRYPTO' > /etc/ssh/sshd_config.d/ciphers.conf
-# Post-Quantum Ready Cryptographic Algorithms
-KexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512
-Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
-MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com
-HostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-256
-CRYPTO
-
-    # Login banner
-    cat << 'SSHBANNER' > /etc/ssh/banner
-========================================================
-              AUTHORIZED ACCESS ONLY
-  All connections are monitored and logged.
-  Unauthorized access attempts will be prosecuted.
-========================================================
-SSHBANNER
+    # Remove drop-in overrides that could conflict
+    rm -f /etc/ssh/sshd_config.d/*.conf 2>/dev/null || true
 
     # Prefer ssh.service over ssh.socket
     systemctl stop ssh.socket 2>/dev/null || true
@@ -1050,6 +996,7 @@ SSHBANNER
     else
         error "SSH config validation failed — restoring backup"
         cp "$backup_dir/sshd_config" /etc/ssh/sshd_config
+        cp "$backup_dir/sshd_config.d/"*.conf /etc/ssh/sshd_config.d/ 2>/dev/null || true
         return 1
     fi
 }

@@ -1,0 +1,81 @@
+# Hardened OpenSSH Server Configuration
+
+# --- Network ---
+Port 22
+AddressFamily inet
+ListenAddress 0.0.0.0
+
+# --- Protocol ---
+Protocol 2
+
+# --- Host Keys (prefer Ed25519, fallback to RSA) ---
+HostKey /etc/ssh/ssh_host_ed25519_key
+HostKey /etc/ssh/ssh_host_rsa_key
+
+# --- Authentication ---
+PermitRootLogin no
+MaxAuthTries 3
+MaxSessions 3
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+
+# Disable all password/keyboard-interactive auth
+PasswordAuthentication no
+PermitEmptyPasswords no
+KbdInteractiveAuthentication no
+ChallengeResponseAuthentication no
+
+# Disable other auth methods
+GSSAPIAuthentication no
+KerberosAuthentication no
+HostbasedAuthentication no
+
+# --- Key Exchange, Ciphers, MACs (modern, strong algorithms only) ---
+KexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+HostKeyAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-256-cert-v01@openssh.com
+PubkeyAcceptedAlgorithms ssh-ed25519,ssh-ed25519-cert-v01@openssh.com,rsa-sha2-512,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256,rsa-sha2-256-cert-v01@openssh.com
+
+# --- Session Hardening ---
+LoginGraceTime 30
+ClientAliveInterval 300
+ClientAliveCountMax 2
+
+# Disable unnecessary features
+X11Forwarding no
+AllowTcpForwarding no
+AllowAgentForwarding no
+AllowStreamLocalForwarding no
+GatewayPorts no
+PermitTunnel no
+PermitUserEnvironment no
+DisableForwarding yes
+
+# --- Logging ---
+SyslogFacility AUTH
+LogLevel VERBOSE
+
+# --- Misc ---
+PrintMotd no
+PrintLastLog yes
+TCPKeepAlive no
+Compression no
+UseDNS no
+StrictModes yes
+IgnoreRhosts yes
+
+# Restrict sftp to chrooted internal-sftp (optional, uncomment if needed)
+# Subsystem sftp internal-sftp
+# Match Group sftp
+#     ChrootDirectory /home/%u
+#     ForceCommand internal-sftp
+#     AllowTcpForwarding no
+#     X11Forwarding no
+
+# --- Banner ---
+Banner none
+
+# --- Access Control (uncomment and adjust as needed) ---
+# AllowUsers your_username
+# AllowGroups ssh-users
