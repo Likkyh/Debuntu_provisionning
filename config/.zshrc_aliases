@@ -33,22 +33,22 @@ else
     alias ls='ls --color=auto --group-directories-first'
     alias la='ls -A --color=auto --group-directories-first'
     alias ll='ls -lAh --color=auto --group-directories-first'
-fi
 
-# Tree Configuration
-if command -v tree &> /dev/null; then
-    # 'tree' -> No hidden files, ignores junk
-    tree() {
-        command tree -I '.git|node_modules|.DS_Store|__pycache__|*.pyc|.venv|.env' "$@"
-    }
+    # Tree Configuration (only when lsd is not handling tree)
+    if command -v tree &> /dev/null; then
+        # 'tree' -> No hidden files, ignores junk
+        tree() {
+            command tree -I '.git|node_modules|.DS_Store|__pycache__|*.pyc|.venv|.env' "$@"
+        }
 
-    # 'treea' -> Shows hidden files (-a), still ignores junk
-    treea() {
-        command tree -a -I '.git|node_modules|.DS_Store|__pycache__|*.pyc|.venv|.env' "$@"
-    }
-else  
-    alias tree="echo 'tree is not installed'"
-    alias treea="echo 'tree is not installed'"
+        # 'treea' -> Shows hidden files (-a), still ignores junk
+        treea() {
+            command tree -a -I '.git|node_modules|.DS_Store|__pycache__|*.pyc|.venv|.env' "$@"
+        }
+    else
+        alias tree="echo 'tree is not installed'"
+        alias treea="echo 'tree is not installed'"
+    fi
 fi
 
 # grep with color
